@@ -1,0 +1,26 @@
+{
+  "name": "bharat-registry",
+  "version": "1.0.0",
+  "description": "Blockchain-based Land Registry System for India",
+  "scripts": {
+    "install:all": "cd blockchain && npm install && cd ../backend && npm install && cd ../frontend && npm install",
+    "blockchain": "cd blockchain && npm run node",
+    "deploy": "cd blockchain && npm run deploy:local",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "test": "cd blockchain && npm test"
+  },
+  "keywords": [
+    "blockchain",
+    "land-registry",
+    "ethereum",
+    "smart-contracts",
+    "web3"
+  ],
+  "author": "Bharat Registry Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jash-vcs/BharatRegistry.git"
+  }
+}

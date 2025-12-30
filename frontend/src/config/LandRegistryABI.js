@@ -1,0 +1,251 @@
+export const LAND_REGISTRY_ABI = [
+  {
+    inputs: [],
+    stateMutability: "nonpayable",
+    type: "constructor",
+  },
+  {
+    inputs: [],
+    name: "AccessControlBadConfirmation",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" },
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "surveyNumber",
+        type: "string",
+      },
+    ],
+    name: "PropertyRegistered",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "verifier",
+        type: "address",
+      },
+    ],
+    name: "PropertyVerified",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: true, internalType: "address", name: "to", type: "address" },
+    ],
+    name: "PropertyTransferred",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "reason",
+        type: "string",
+      },
+    ],
+    name: "PropertyDisputed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "ipfsDocumentHash",
+        type: "string",
+      },
+    ],
+    name: "PropertyUpdated",
+    type: "event",
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "_surveyNumber", type: "string" },
+      { internalType: "string", name: "_location", type: "string" },
+      { internalType: "uint256", name: "_area", type: "uint256" },
+      { internalType: "uint256", name: "_marketValue", type: "uint256" },
+      { internalType: "string", name: "_ipfsHash", type: "string" },
+    ],
+    name: "registerProperty",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "verifyProperty",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_propertyId", type: "uint256" },
+      { internalType: "string", name: "_reason", type: "string" },
+    ],
+    name: "disputeProperty",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "getProperty",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "propertyId", type: "uint256" },
+          { internalType: "string", name: "surveyNumber", type: "string" },
+          { internalType: "string", name: "location", type: "string" },
+          { internalType: "uint256", name: "area", type: "uint256" },
+          { internalType: "address", name: "currentOwner", type: "address" },
+          { internalType: "uint256", name: "marketValue", type: "uint256" },
+          { internalType: "uint8", name: "status", type: "uint8" },
+          {
+            internalType: "uint256",
+            name: "registrationDate",
+            type: "uint256",
+          },
+          { internalType: "string", name: "ipfsDocumentHash", type: "string" },
+        ],
+        internalType: "struct ILandRegistry.Property",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_owner", type: "address" }],
+    name: "getOwnerProperties",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "string", name: "_surveyNumber", type: "string" }],
+    name: "getPropertyBySurveyNumber",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "propertyId", type: "uint256" },
+          { internalType: "string", name: "surveyNumber", type: "string" },
+          { internalType: "string", name: "location", type: "string" },
+          { internalType: "uint256", name: "area", type: "uint256" },
+          { internalType: "address", name: "currentOwner", type: "address" },
+          { internalType: "uint256", name: "marketValue", type: "uint256" },
+          { internalType: "uint8", name: "status", type: "uint8" },
+          {
+            internalType: "uint256",
+            name: "registrationDate",
+            type: "uint256",
+          },
+          { internalType: "string", name: "ipfsDocumentHash", type: "string" },
+        ],
+        internalType: "struct ILandRegistry.Property",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "isPropertyVerified",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getTotalProperties",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getTotalVerifiedProperties",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_propertyId", type: "uint256" },
+      { internalType: "string", name: "_newIpfsHash", type: "string" },
+    ],
+    name: "updatePropertyDocuments",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_propertyId", type: "uint256" },
+      { internalType: "uint256", name: "_newMarketValue", type: "uint256" },
+    ],
+    name: "updateMarketValue",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
