@@ -191,7 +191,7 @@ jobs:
                     add_header Content-Type text/plain;
                 }
             }
-NGINX_CONFIG
+            NGINX_CONFIG
             else
                 # HTTP-Only Configuration (temporary fallback)
                 sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
@@ -244,7 +244,7 @@ NGINX_CONFIG
                     add_header Content-Type text/plain;
                 }
             }
-NGINX_CONFIG
+            NGINX_CONFIG
             fi
             
             # Enable nginx site
@@ -270,10 +270,7 @@ NGINX_CONFIG
                     cp .env.example .env
                     echo "BACKEND_PORT=5000" >> .env
                 else
-                    cat > .env << EOF
-BACKEND_PORT=5000
-NODE_ENV=production
-EOF
+                    printf "BACKEND_PORT=5000\nNODE_ENV=production\n" > .env
                 fi
             fi
             
@@ -308,9 +305,7 @@ EOF
                     cp .env.example .env
                     echo "VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api" >> .env
                 else
-                    cat > .env << EOF
-VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api
-EOF
+                    printf "VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api\n" > .env
                 fi
             fi
             
