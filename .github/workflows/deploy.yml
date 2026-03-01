@@ -191,7 +191,7 @@ jobs:
                     add_header Content-Type text/plain;
                 }
             }
-            NGINX_CONFIG
+NGINX_CONFIG
             else
                 # HTTP-Only Configuration (temporary fallback)
                 sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
@@ -244,7 +244,7 @@ jobs:
                     add_header Content-Type text/plain;
                 }
             }
-            NGINX_CONFIG
+NGINX_CONFIG
             fi
             
             # Enable nginx site
