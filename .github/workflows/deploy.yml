@@ -123,7 +123,7 @@ jobs:
             
             if [ "$USE_HTTPS" = true ]; then
                 # HTTPS Configuration
-                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
+                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
             upstream backend {
                 server 127.0.0.1:5000;
             }
@@ -194,7 +194,7 @@ jobs:
             NGINX_CONFIG
             else
                 # HTTP-Only Configuration (temporary fallback)
-                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
+                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
             upstream backend {
                 server 127.0.0.1:5000;
             }
