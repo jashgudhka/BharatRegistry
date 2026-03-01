@@ -270,7 +270,7 @@ jobs:
                     cp .env.example .env
                     echo "BACKEND_PORT=5000" >> .env
                 else
-                    cat > .env <<'EOF'
+                    cat > .env << EOF
 BACKEND_PORT=5000
 NODE_ENV=production
 EOF
@@ -308,7 +308,7 @@ EOF
                     cp .env.example .env
                     echo "VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api" >> .env
                 else
-                    cat > .env <<'EOF'
+                    cat > .env << EOF
 VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api
 EOF
                 fi
