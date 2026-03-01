@@ -1,4 +1,4 @@
-# BhoomiChain: Blockchain-Powered Land Registry System
+# Bharat Registry: Blockchain-Powered Land Registry System
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.x-363636.svg)](https://soliditylang.org/)
@@ -54,7 +54,7 @@ Traditional land registry systems suffer from numerous challenges:
 
 ## 📖 Project Overview
 
-**BhoomiChain** is a blockchain-based land registry solution that:
+**Bharat Registry** is a blockchain-based land registry solution that:
 
 1. **Digitizes** all land records on an immutable distributed ledger
 2. **Automates** ownership transfers through smart contracts
@@ -72,7 +72,7 @@ Traditional land registry systems suffer from numerous challenges:
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│                    BHOOMICHAIN SYSTEM                           │
+│                    BHARAT REGISTRY SYSTEM                       │
 │        Buyer → Smart Contract → Blockchain → Seller             │
 │         (Direct transfer, minutes of processing)                │
 └─────────────────────────────────────────────────────────────────┘
@@ -515,7 +515,7 @@ contract Transfer is ReentrancyGuard {
 ## 📁 Project Structure
 
 ```
-bhoomichain/
+bharat-registry/
 ├── 📂 blockchain/                    # Smart contracts
 │   ├── 📂 contracts/
 │   │   ├── LandRegistry.sol
@@ -612,8 +612,8 @@ bhoomichain/
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/bhoomichain.git
-cd bhoomichain
+git clone https://github.com/YOUR_USERNAME/bharat-registry.git
+cd bharat-registry
 ```
 
 ### Step 2: Setup Blockchain Environment
@@ -661,7 +661,7 @@ cp .env.example .env
 
 # Configure .env:
 # PORT=5000
-# MONGODB_URI=mongodb://localhost:27017/bhoomichain
+# MONGODB_URI=mongodb://localhost:27017/bharat-registry
 # JWT_SECRET=your_jwt_secret
 # CONTRACT_ADDRESS=deployed_contract_address
 # INFURA_URL=https://sepolia.infura.io/v3/YOUR_KEY
@@ -898,7 +898,7 @@ Under the guidance of **Dr. Swati R. Maurya**
 ---
 
 <p align="center">
-  <b>BhoomiChain</b> - Revolutionizing Land Registry with Blockchain
+  <b>Bharat Registry</b> - Revolutionizing Land Registry with Blockchain
   <br>
   <sub>Built with ❤️ for a transparent future</sub>
 </p>

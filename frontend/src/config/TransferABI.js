@@ -1,0 +1,225 @@
+export const TRANSFER_ABI = [
+  {
+    inputs: [
+      { internalType: "address", name: "_registryAddress", type: "address" },
+    ],
+    stateMutability: "nonpayable",
+    type: "constructor",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "propertyId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "buyer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "price",
+        type: "uint256",
+      },
+    ],
+    name: "TransferInitiated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "EscrowDeposited",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+    ],
+    name: "TransferApprovedBySeller",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "registrar",
+        type: "address",
+      },
+    ],
+    name: "TransferApprovedByRegistrar",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: true, internalType: "address", name: "to", type: "address" },
+    ],
+    name: "TransferCompleted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "transferId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "reason",
+        type: "string",
+      },
+    ],
+    name: "TransferCancelled",
+    type: "event",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_propertyId", type: "uint256" },
+      { internalType: "uint256", name: "_offeredPrice", type: "uint256" },
+    ],
+    name: "initiateTransfer",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_transferId", type: "uint256" }],
+    name: "depositEscrow",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_transferId", type: "uint256" }],
+    name: "approveTransferAsSeller",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_transferId", type: "uint256" }],
+    name: "approveTransferAsRegistrar",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_transferId", type: "uint256" }],
+    name: "completeTransfer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_transferId", type: "uint256" },
+      { internalType: "string", name: "_reason", type: "string" },
+    ],
+    name: "cancelTransfer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_transferId", type: "uint256" }],
+    name: "getTransfer",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "transferId", type: "uint256" },
+          { internalType: "uint256", name: "propertyId", type: "uint256" },
+          { internalType: "address", name: "seller", type: "address" },
+          { internalType: "address", name: "buyer", type: "address" },
+          { internalType: "uint256", name: "agreedPrice", type: "uint256" },
+          { internalType: "uint256", name: "escrowAmount", type: "uint256" },
+          { internalType: "uint8", name: "status", type: "uint8" },
+          { internalType: "uint256", name: "createdAt", type: "uint256" },
+          { internalType: "uint256", name: "completedAt", type: "uint256" },
+        ],
+        internalType: "struct ITransfer.TransferRequest",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "getPropertyTransfers",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_user", type: "address" }],
+    name: "getUserTransfers",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getTotalTransfers",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "platformFeePercent",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+];
