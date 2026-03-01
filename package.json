@@ -1,26 +1,34 @@
 {
   "name": "bharat-registry",
   "version": "1.0.0",
-  "description": "Blockchain-based Land Registry System for India",
+  "description": "Blockchain-based Land Registry System with Zero-Gas Permissioned Network",
   "scripts": {
     "install:all": "cd blockchain && npm install && cd ../backend && npm install && cd ../frontend && npm install",
     "blockchain": "cd blockchain && npm run node",
     "deploy": "cd blockchain && npm run deploy:local",
+    "deploy:besu": "cd blockchain && npx hardhat run scripts/deploy-besu.js --network besu",
+    "test:besu": "cd blockchain && npx hardhat run scripts/test-besu.js --network besu",
+    "besu:start": "cd besu-network && .\\start-network.ps1",
+    "besu:stop": "cd besu-network && .\\stop-network.ps1",
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
-    "test": "cd blockchain && npm test"
+    "test": "cd blockchain && npm test",
+    "test:contracts": "cd blockchain && npx hardhat test"
   },
   "keywords": [
     "blockchain",
     "land-registry",
     "ethereum",
+    "hyperledger-besu",
     "smart-contracts",
-    "web3"
+    "web3",
+    "zero-gas",
+    "permissioned"
   ],
   "author": "Bharat Registry Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jash-vcs/BharatRegistry.git"
+    "url": "https://github.com/jashgudhka/BharatRegistry.git"
   }
 }

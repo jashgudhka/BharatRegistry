@@ -17,7 +17,7 @@ const auth = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "bharat-registry-secret-key");
 
     const user = await User.findOne({ walletAddress: decoded.walletAddress });
 
@@ -58,7 +58,7 @@ const optionalAuth = async (req, res, next) => {
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "bharat-registry-secret-key");
       const user = await User.findOne({ walletAddress: decoded.walletAddress });
       if (user) {
         req.user = user;

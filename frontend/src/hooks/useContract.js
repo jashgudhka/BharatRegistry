@@ -1,5 +1,5 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { parseEther, formatEther } from 'viem'
+import { parseUnits, formatUnits } from 'viem'
 import { LAND_REGISTRY_ADDRESS, PROPERTY_STATUS } from '../utils/constants'
 import { LAND_REGISTRY_ABI } from '../config/LandRegistryABI'
 
@@ -21,7 +21,7 @@ export function useProperty(propertyId) {
     location: data.location,
     area: Number(data.area),
     currentOwner: data.currentOwner,
-    marketValue: formatEther(data.marketValue),
+    marketValue: formatUnits(data.marketValue, 18),
     status: PROPERTY_STATUS[data.status],
     registrationDate: new Date(Number(data.registrationDate) * 1000),
     ipfsDocumentHash: data.ipfsDocumentHash,
@@ -75,7 +75,10 @@ export function useRegisterProperty() {
       address: LAND_REGISTRY_ADDRESS,
       abi: LAND_REGISTRY_ABI,
       functionName: 'registerProperty',
-      args: [surveyNumber, location, BigInt(area), parseEther(marketValue), ipfsHash || ''],
+      args: [surveyNumber, location, BigInt(area), parseUnits(marketValue, 18), ipfsHash || ''],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 2000000n, // Fixed gas limit to bypass simulation crashes
     })
   }
 
@@ -104,6 +107,9 @@ export function useUpdatePropertyDocuments() {
       abi: LAND_REGISTRY_ABI,
       functionName: 'updatePropertyDocuments',
       args: [BigInt(propertyId), newIpfsHash],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 1000000n,
     })
   }
 

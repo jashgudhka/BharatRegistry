@@ -3,8 +3,17 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.x-363636.svg)](https://soliditylang.org/)
 [![Ethereum](https://img.shields.io/badge/Ethereum-Smart%20Contracts-3C3C3D.svg)](https://ethereum.org/)
+[![Besu](https://img.shields.io/badge/Hyperledger-Besu-2F3134.svg)](https://besu.hyperledger.org/)
 
-> A decentralized land registry system leveraging blockchain technology and smart contracts to revolutionize property registration, eliminate fraud, and ensure transparent ownership transfers.
+> A **FREE, permissioned blockchain-based** land registry system that eliminates transaction costs for users while maintaining decentralization through consortium consensus. Built on Hyperledger Besu with IBFT 2.0.
+
+## 🌟 Key Highlights
+
+- ⚡ **ZERO GAS FEES** - All transactions completely FREE for users
+- 🏛️ **Permissioned Network** - Consortium of trusted validator nodes
+- 🔐 **Decentralized** - Multi-validator IBFT 2.0 consensus
+- 🚀 **Fast** - 2-second block times
+- 💻 **EVM Compatible** - Standard Solidity smart contracts
 
 ---
 
@@ -194,12 +203,20 @@ Traditional land registry systems suffer from numerous challenges:
 
 ### Blockchain & Smart Contracts
 
-| Technology       | Purpose                    | Version |
-| ---------------- | -------------------------- | ------- |
-| **Solidity**     | Smart contract programming | ^0.8.19 |
-| **Hardhat**      | Development environment    | ^2.19.0 |
-| **OpenZeppelin** | Secure contract libraries  | ^5.0.0  |
-| **Ethers.js**    | Blockchain interaction     | ^6.9.0  |
+| Technology           | Purpose                            | Version |
+| -------------------- | ---------------------------------- | ------- |
+| **Hyperledger Besu** | Permissioned blockchain (IBFT 2.0) | 23.10.3 |
+| **Solidity**         | Smart contract programming         | ^0.8.19 |
+| **Hardhat**          | Development environment            | ^2.19.0 |
+| **OpenZeppelin**     | Secure contract libraries          | ^5.0.0  |
+| **Ethers.js**        | Blockchain interaction             | ^6.9.0  |
+
+**Network Configuration:**
+
+- **Gas Price:** 0 (FREE transactions for all users)
+- **Consensus:** IBFT 2.0 (Byzantine Fault Tolerant)
+- **Block Time:** 2 seconds
+- **Chain ID:** 1337
 
 ### Frontend
 
@@ -600,6 +617,41 @@ bharat-registry/
 
 ## 🚀 Installation & Setup
 
+### Quick Start with FREE Transactions (Besu Network)
+
+**⚡ This is the recommended setup for zero-gas transactions!**
+
+See **[BESU_SETUP.md](BESU_SETUP.md)** for complete step-by-step guide.
+
+#### Quick Overview
+
+```bash
+# 1. Install Hyperledger Besu
+# Download from: https://github.com/hyperledger/besu/releases
+
+# 2. Start Besu Network (Windows)
+cd besu-network
+.\start-network.ps1
+
+# 3. Deploy Contracts
+cd blockchain
+npx hardhat run scripts/deploy-besu.js --network besu
+
+# 4. Start Backend
+cd backend
+npm run dev
+
+# 5. Start Frontend
+cd frontend
+npm run dev
+```
+
+---
+
+### Alternative: Local Development (Hardhat)
+
+For traditional development with Hardhat local node:
+
 ### Prerequisites
 
 - **Node.js** v20.x or higher
@@ -607,6 +659,7 @@ bharat-registry/
 - **Git**
 - **MetaMask** browser extension
 - **MongoDB** (local or Atlas)
+- **Java 17+** (for Besu network)
 - **Docker** (optional, for containerization)
 
 ### Step 1: Clone Repository

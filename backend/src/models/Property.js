@@ -99,8 +99,7 @@ const propertySchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-propertySchema.index({ surveyNumber: 1 });
+// Indexes (surveyNumber has unique index already, only add others)
 propertySchema.index({ currentOwner: 1 });
 propertySchema.index({ status: 1 });
 propertySchema.index({ "location.city": 1, "location.state": 1 });

@@ -3,7 +3,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { parseUnits, formatUnits } from "viem";
 import { TRANSFER_ADDRESS, TRANSFER_STATUS } from "../utils/constants";
 import { TRANSFER_ABI } from "../config/TransferABI";
 
@@ -25,8 +25,8 @@ export function useTransfer(transferId) {
         propertyId: Number(data.propertyId),
         seller: data.seller,
         buyer: data.buyer,
-        agreedPrice: formatEther(data.agreedPrice),
-        escrowAmount: formatEther(data.escrowAmount),
+        agreedPrice: formatUnits(data.agreedPrice, 18),
+        escrowAmount: formatUnits(data.escrowAmount, 18),
         status: TRANSFER_STATUS[data.status],
         initiatedAt: new Date(Number(data.createdAt) * 1000),
         completedAt:
@@ -88,7 +88,10 @@ export function useInitiateTransfer() {
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "initiateTransfer",
-      args: [BigInt(propertyId), parseEther(offeredPrice)],
+      args: [BigInt(propertyId), parseUnits(offeredPrice, 18)],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 1000000n,
     });
   };
 
@@ -117,7 +120,10 @@ export function useDepositEscrow() {
       abi: TRANSFER_ABI,
       functionName: "depositEscrow",
       args: [BigInt(transferId)],
-      value: parseEther(amount),
+      value: parseUnits(amount, 18),
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 1000000n,
     });
   };
 
@@ -146,6 +152,9 @@ export function useApproveAsSeller() {
       abi: TRANSFER_ABI,
       functionName: "approveTransferAsSeller",
       args: [BigInt(transferId)],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 500000n,
     });
   };
 
@@ -174,6 +183,9 @@ export function useApproveAsGovernment() {
       abi: TRANSFER_ABI,
       functionName: "approveTransferAsRegistrar",
       args: [BigInt(transferId)],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 500000n,
     });
   };
 
@@ -202,6 +214,9 @@ export function useCompleteTransfer() {
       abi: TRANSFER_ABI,
       functionName: "completeTransfer",
       args: [BigInt(transferId)],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 1000000n,
     });
   };
 
@@ -230,6 +245,9 @@ export function useCancelTransfer() {
       abi: TRANSFER_ABI,
       functionName: "cancelTransfer",
       args: [BigInt(transferId), reason],
+      maxFeePerGas: 0n,
+      maxPriorityFeePerGas: 0n,
+      gas: 500000n,
     });
   };
 
