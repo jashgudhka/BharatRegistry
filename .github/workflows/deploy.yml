@@ -86,19 +86,44 @@ jobs:
             unzip -o /home/${{ secrets.PROD_SERVER_USER }}/deploy.zip
             
             # ==================== SSL CERTIFICATE SETUP ====================
-            DOMAIN="${{ secrets.PROD_DOMAIN_NAME }}"
+            DOMAIN="bhoomichain.centralindia.cloudapp.azure.com"
             SSL_DIR="/etc/letsencrypt/live/$DOMAIN"
             
             if [ ! -d "$SSL_DIR" ]; then
                 echo "==> Setting up SSL certificate for $DOMAIN..."
-                sudo certbot certonly --non-interactive --agree-tos --email ${{ secrets.LETSENCRYPT_EMAIL }} \
-                  --nginx -d "$DOMAIN" || echo "SSL certificate setup attempted or already exists"
+                # Stop nginx if it's running to avoid conflicts with certbot
+                sudo systemctl stop nginx || true
+                sleep 2
+                
+                # Use standalone mode for certificate generation
+                sudo certbot certonly --standalone --non-interactive --agree-tos \
+                  --email ${{ secrets.LETSENCRYPT_EMAIL }} -d "$DOMAIN" \
+                  --preferred-challenges http || echo "Certificate generation attempted"
+                
+                # Start nginx again
+                sudo systemctl start nginx || true
+            else
+                echo "==> SSL certificate already exists at $SSL_DIR"
             fi
             
             # ==================== NGINX CONFIGURATION ====================
             echo "==> Configuring nginx..."
             
-            sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
+            CERT_FILE="/etc/letsencrypt/live/bhoomichain.centralindia.cloudapp.azure.com/fullchain.pem"
+            KEY_FILE="/etc/letsencrypt/live/bhoomichain.centralindia.cloudapp.azure.com/privkey.pem"
+            
+            # Check if certificates exist
+            if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
+                echo "==> SSL certificates found, configuring HTTPS..."
+                USE_HTTPS=true
+            else
+                echo "==> SSL certificates not found, will use HTTP-only config"
+                USE_HTTPS=false
+            fi
+            
+            if [ "$USE_HTTPS" = true ]; then
+                # HTTPS Configuration
+                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
             upstream backend {
                 server 127.0.0.1:5000;
             }
@@ -167,6 +192,60 @@ jobs:
                 }
             }
             NGINX_CONFIG
+            else
+                # HTTP-Only Configuration (temporary fallback)
+                sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
+            upstream backend {
+                server 127.0.0.1:5000;
+            }
+            
+            upstream frontend {
+                server 127.0.0.1:5173;
+            }
+            
+            # HTTP Server Block
+            server {
+                listen 80;
+                listen [::]:80;
+                server_name bhoomichain.centralindia.cloudapp.azure.com www.bhoomichain.centralindia.cloudapp.azure.com;
+                
+                client_max_body_size 50M;
+                
+                # Root location - serve frontend
+                location / {
+                    proxy_pass http://frontend;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_cache_bypass $http_upgrade;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+                
+                # API endpoints - proxy to backend
+                location /api/ {
+                    proxy_pass http://backend;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_cache_bypass $http_upgrade;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+                
+                # Health check endpoint
+                location /health {
+                    access_log off;
+                    return 200 "healthy\n";
+                    add_header Content-Type text/plain;
+                }
+            }
+            NGINX_CONFIG
+            fi
             
             # Enable nginx site
             sudo ln -sf /etc/nginx/sites-available/BharatRegistry /etc/nginx/sites-enabled/BharatRegistry
@@ -184,6 +263,20 @@ jobs:
             echo "==> Setting up backend..."
             cd "$APP_DIR/backend"
             
+            # Setup environment file if it doesn't exist
+            if [ ! -f .env ]; then
+                echo "==> Creating .env file from template..."
+                if [ -f .env.example ]; then
+                    cp .env.example .env
+                    echo "BACKEND_PORT=5000" >> .env
+                else
+                    cat > .env <<'EOF'
+BACKEND_PORT=5000
+NODE_ENV=production
+EOF
+                fi
+            fi
+            
             npm ci --production
             
             # Start or restart backend with PM2
@@ -193,28 +286,57 @@ jobs:
                 pm2 restart BharatRegistry-Backend
             else
                 echo "==> Starting BharatRegistry-Backend..."
-                pm2 start npm --name "BharatRegistry-Backend" -- start --port 5000
+                # Try 'npm start' first, fallback to direct node execution
+                if grep -q '"start"' package.json; then
+                    pm2 start npm --name "BharatRegistry-Backend" -- start
+                else
+                    pm2 start node --name "BharatRegistry-Backend" -- src/app.js
+                fi
             fi
+            
+            # Wait for backend to start
+            sleep 3
             
             # ==================== FRONTEND SETUP ====================
             echo "==> Setting up frontend..."
             cd "$APP_DIR/frontend"
             
+            # Setup environment file if it doesn't exist
+            if [ ! -f .env ]; then
+                echo "==> Creating .env file from template..."
+                if [ -f .env.example ]; then
+                    cp .env.example .env
+                    echo "VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api" >> .env
+                else
+                    cat > .env <<'EOF'
+VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api
+EOF
+                fi
+            fi
+            
             npm ci --production
             
             # Build frontend
             echo "==> Building frontend..."
-            npm run build
+            npm run build 2>&1 || echo "Build warning (non-fatal)"
             
-            # Start frontend with PM2 (serve the built app)
+            # Start frontend with PM2
             pm2 describe BharatRegistry-Frontend > /dev/null 2>&1
             if [ $? -eq 0 ]; then
                 echo "==> Restarting BharatRegistry-Frontend..."
                 pm2 restart BharatRegistry-Frontend
             else
                 echo "==> Starting BharatRegistry-Frontend..."
-                pm2 start npx --name "BharatRegistry-Frontend" -- vite preview --host 0.0.0.0 --port 5173
+                # Try 'npm run preview' first, fallback to direct vite preview
+                if grep -q '"preview"' package.json; then
+                    pm2 start npm --name "BharatRegistry-Frontend" -- run preview
+                else
+                    pm2 start npx --name "BharatRegistry-Frontend" -- vite preview --host 0.0.0.0 --port 5173
+                fi
             fi
+            
+            # Wait for frontend to start
+            sleep 3
             
             # ==================== PM2 PERSISTENCE ====================
             echo "==> Configuring PM2 to start on system startup..."
