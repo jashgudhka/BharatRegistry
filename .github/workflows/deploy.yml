@@ -76,16 +76,33 @@ jobs:
             npm install -g pm2 pm2-logrotate
             pm2 install pm2-logrotate
             
-            # ==================== APPLICATION SETUP ====================
-            APP_DIR="/home/${{ secrets.PROD_SERVER_USER }}/BharatRegistry"
-            mkdir -p "$APP_DIR"
-            cd "$APP_DIR"
-            
-            # Unzip deployment package
-            echo "==> Extracting deployment package..."
-            unzip -o /home/${{ secrets.PROD_SERVER_USER }}/deploy.zip
-            
-            # ==================== SSL CERTIFICATE SETUP ====================
+                        # ==================== APPLICATION SETUP ====================
+                        APP_DIR="/home/${{ secrets.PROD_SERVER_USER }}/BharatRegistry"
+                        mkdir -p "$APP_DIR"
+                        cd "$APP_DIR"
+
+                        # Unzip deployment package
+                        echo "==> Extracting deployment package..."
+                        unzip -o /home/${{ secrets.PROD_SERVER_USER }}/deploy.zip
+
+                        # Copy .env files if present
+                        for ENV_FILE in .env backend/.env frontend/.env; do
+                            if [ -f "$ENV_FILE" ]; then
+                                cp "$ENV_FILE" "$APP_DIR/$ENV_FILE"
+                            fi
+                        done
+
+                        # Install dependencies and build frontend/backend
+                        cd "$APP_DIR/backend" && npm install
+                        cd "$APP_DIR/frontend" && npm install && npm run build
+
+                        # Start backend and frontend with PM2
+                        cd "$APP_DIR/backend" && pm2 start src/app.js --name bharat-backend --update-env
+                        cd "$APP_DIR/frontend" && pm2 serve dist 5173 --name bharat-frontend --spa
+
+                        pm2 save
+
+                        # ==================== SSL CERTIFICATE SETUP ====================
             DOMAIN="bhoomichain.centralindia.cloudapp.azure.com"
             SSL_DIR="/etc/letsencrypt/live/$DOMAIN"
             
