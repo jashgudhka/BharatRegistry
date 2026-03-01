@@ -85,20 +85,27 @@ jobs:
                         echo "==> Extracting deployment package..."
                         unzip -o /home/${{ secrets.PROD_SERVER_USER }}/deploy.zip
 
-                        # Copy .env files if present
-                        for ENV_FILE in .env backend/.env frontend/.env; do
-                            if [ -f "$ENV_FILE" ]; then
-                                cp "$ENV_FILE" "$APP_DIR/$ENV_FILE"
-                            fi
-                        done
+
+                        # Ensure .env file exists and is populated
+                        if [ ! -f "$APP_DIR/backend/.env" ]; then
+                            echo "ERROR: backend/.env file is missing!" >&2
+                            exit 1
+                        fi
+
+                        # Validate required env variables
+                        source "$APP_DIR/backend/.env"
+                        if [ -z "$LAND_REGISTRY_ADDRESS" ] || [ -z "$TRANSFER_ADDRESS" ] || [ -z "$RPC_URL" ]; then
+                            echo "ERROR: One or more required env variables (LAND_REGISTRY_ADDRESS, TRANSFER_ADDRESS, RPC_URL) are missing in backend/.env!" >&2
+                            exit 1
+                        fi
 
                         # Install dependencies and build frontend/backend
                         cd "$APP_DIR/backend" && npm install
                         cd "$APP_DIR/frontend" && npm install && npm run build
 
-                        # Start backend and frontend with PM2
+                        # Start backend and frontend with PM2 (always update env)
                         cd "$APP_DIR/backend" && pm2 start src/app.js --name bharat-backend --update-env
-                        cd "$APP_DIR/frontend" && pm2 serve dist 5173 --name bharat-frontend --spa
+                        cd "$APP_DIR/frontend" && pm2 serve dist 5173 --name bharat-frontend --spa -f
 
                         pm2 save
 
