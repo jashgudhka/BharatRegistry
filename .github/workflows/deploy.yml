@@ -21,272 +21,76 @@ jobs:
           set -e  # Exit on error
 
           echo "==> Starting deployment on self-hosted runner..."
-          
-          # We deploy relative to the runner user's home directory.
-          # The secrets like PROD_SERVER_USER may still be available or we can just use $USER
           USER_HOME=$(eval echo ~$USER)
           APP_DIR="$USER_HOME/BharatRegistry"
-
-          # ==================== SYSTEM DEPENDENCIES ====================
-          echo "==> Updating system packages and dependencies..."
-          sudo apt-get update -qq
-
-          for pkg in nginx certbot python3-certbot-nginx unzip rsync gnupg curl; do
-              if ! command -v $pkg &> /dev/null; then
-                  echo "==> Installing $pkg..."
-                  sudo apt-get install -y $pkg
-              fi
-          done
-
-          # Install MongoDB if missing
-          if ! command -v mongod &> /dev/null; then
-              echo "==> Installing MongoDB 7.0..."
-              curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes
-              echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-              sudo apt-get update
-              sudo apt-get install -y mongodb-org
-              sudo systemctl enable mongod
-              sudo systemctl start mongod
-          fi
-
-          # Ensure MongoDB is started
-          sudo systemctl start mongod || true
-
-          # Install PM2 globally if missing
-          if ! command -v pm2 &> /dev/null; then
-              echo "==> Installing PM2 globally..."
-              sudo npm install -g pm2 pm2-logrotate
-              pm2 install pm2-logrotate || true
-          fi
 
           # ==================== APPLICATION SETUP ====================
           echo "==> Copying deployment files to $APP_DIR..."
           mkdir -p "$APP_DIR"
           
           # Rsync from GitHub actions workspace to the actual app directory
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='coverage' --exclude='besu-network/node*' --exclude='artifacts' --exclude='cache' ./ "$APP_DIR/"
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='coverage' --exclude='besu-network/data*' --exclude='besu-network/logs*' --exclude='artifacts' --exclude='cache' ./ "$APP_DIR/"
 
-          # ==================== SSL CERTIFICATE SETUP ====================
-          DOMAIN="bhoomichain.centralindia.cloudapp.azure.com"
-          SSL_DIR="/etc/letsencrypt/live/$DOMAIN"
-
-          if [ ! -d "$SSL_DIR" ]; then
-              echo "==> Setting up SSL certificate for $DOMAIN..."
-              sudo systemctl stop nginx || true
-              sleep 2
-              sudo certbot certonly --standalone --non-interactive --agree-tos \
-                --email ${{ secrets.LETSENCRYPT_EMAIL }} -d "$DOMAIN" \
-                --preferred-challenges http || echo "Certificate generation attempted"
-              sudo systemctl start nginx || true
-          else
-              echo "==> SSL certificate already exists at $SSL_DIR"
+          # ==================== BLOCKCHAIN NETWORK ====================
+          echo "==> Checking Besu Network Status..."
+          if ! pm2 describe "besu-node1" > /dev/null 2>&1; then
+              echo "==> Starting Besu Network via PM2..."
+              cd "$APP_DIR/besu-network"
+              chmod +x start-network.sh || true
+              pm2 start "besu --config-file=config/node1.toml" --name "besu-node1" --cwd "$APP_DIR/besu-network"
+              sleep 3
+              
+              ENODE=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"admin_nodeInfo","params":[],"id":1}' http://127.0.0.1:8545 | jq -r '.result.enode')
+              if [ -n "$ENODE" ]; then
+                  sed -i "s|# bootnodes=\[\]|bootnodes=[\"$ENODE\"]|g" config/node2.toml
+                  sed -i "s|# bootnodes=\[\"enode://...\@127.0.0.1:30303\"\]|bootnodes=[\"$ENODE\"]|g" config/node2.toml
+                  sed -i "s|# bootnodes=\[\"enode://...\@127.0.0.1:30303\"\]|bootnodes=[\"$ENODE\"]|g" config/node3.toml
+                  pm2 start "besu --config-file=config/node2.toml" --name "besu-node2" --cwd "$APP_DIR/besu-network"
+                  pm2 start "besu --config-file=config/node3.toml" --name "besu-node3" --cwd "$APP_DIR/besu-network"
+              fi
           fi
-
-          # ==================== NGINX CONFIGURATION ====================
-          echo "==> Configuring nginx..."
-
-          # Using single quotes for NGINX_CONFIG heredoc prevents bash variable expansion
-          sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
-          upstream backend {
-              server 127.0.0.1:5000;
-          }
-
-          upstream frontend {
-              server 127.0.0.1:5173;
-          }
-
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name bhoomichain.centralindia.cloudapp.azure.com www.bhoomichain.centralindia.cloudapp.azure.com;
-
-              client_max_body_size 50M;
-
-              location / {
-                  proxy_pass http://frontend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_cache_bypass $http_upgrade;
-              }
-
-              location /api/ {
-                  proxy_pass http://backend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_cache_bypass $http_upgrade;
-              }
-          }
-          NGINX_CONFIG
-
-          if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
-              echo "==> SSL certificates found, configuring HTTPS..."
-              sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
-          upstream backend { server 127.0.0.1:5000; }
-          upstream frontend { server 127.0.0.1:5173; }
-
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name $DOMAIN www.$DOMAIN;
-              return 301 https://\$server_name\$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              listen [::]:443 ssl http2;
-              server_name $DOMAIN www.$DOMAIN;
-              
-              ssl_certificate $CERT_FILE;
-              ssl_certificate_key $KEY_FILE;
-              ssl_protocols TLSv1.2 TLSv1.3;
-              ssl_ciphers HIGH:!aNULL:!MD5;
-              ssl_prefer_server_ciphers on;
-              ssl_session_cache shared:SSL:10m;
-              ssl_session_timeout 10m;
-              
-              client_max_body_size 50M;
-              
-              location / {
-                  proxy_pass http://frontend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \$host;
-                  proxy_cache_bypass \$http_upgrade;
-              }
-              
-              location /api/ {
-                  proxy_pass http://backend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \$host;
-                  proxy_cache_bypass \$http_upgrade;
-              }
-
-              location /health {
-                  access_log off;
-                  return 200 "healthy\n";
-                  add_header Content-Type text/plain;
-              }
-          }
-          NGINX_CONFIG
-          else
-              echo "==> SSL certificates not found, falling back to HTTP-only config..."
-              sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<NGINX_CONFIG
-          upstream backend { server 127.0.0.1:5000; }
-          upstream frontend { server 127.0.0.1:5173; }
-
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name $DOMAIN www.$DOMAIN;
-              
-              client_max_body_size 50M;
-              
-              location / {
-                  proxy_pass http://frontend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \$host;
-                  proxy_cache_bypass \$http_upgrade;
-              }
-              
-              location /api/ {
-                  proxy_pass http://backend;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \$host;
-                  proxy_cache_bypass \$http_upgrade;
-              }
-          }
-          NGINX_CONFIG
-          fi
-
-          # Enable nginx site
-          sudo ln -sf /etc/nginx/sites-available/BharatRegistry /etc/nginx/sites-enabled/BharatRegistry
-          sudo rm -f /etc/nginx/sites-enabled/default
-          sudo nginx -t
-          sudo systemctl reload nginx
 
           # ==================== BACKEND SETUP ====================
           echo "==> Setting up backend..."
           cd "$APP_DIR/backend"
 
-          # Keep current .env if exists, otherwise fail loudly so user knows ENV is required
           if [ ! -f .env ]; then
               echo "ERROR: backend/.env file is missing in $APP_DIR/backend/ !" >&2
-              echo "Please manually create $APP_DIR/backend/.env with required variables on the VM." >&2
               exit 1
           fi
 
-          # Install backend dependencies
           npm install
-
-          # Stop and delete conflicting old processes if they exist
-          pm2 delete BharatRegistry-Backend 2>/dev/null || true
-
-          # Start or restart backend with PM2
+          
           pm2 describe bharat-backend > /dev/null 2>&1
           if [ $? -eq 0 ]; then
-              echo "==> Restarting bharat-backend..."
               pm2 restart bharat-backend --update-env
           else
-              echo "==> Starting bharat-backend..."
               pm2 start src/app.js --name bharat-backend --update-env
           fi
-
-          # Wait for backend to start
-          sleep 3
 
           # ==================== FRONTEND SETUP ====================
           echo "==> Setting up frontend..."
           cd "$APP_DIR/frontend"
 
           if [ ! -f .env ]; then
-              echo "==> Creating .env file from template..."
-              echo "VITE_API_URL=https://bhoomichain.centralindia.cloudapp.azure.com/api" > .env
+              echo "ERROR: frontend/.env file is missing in $APP_DIR/frontend/ !" >&2
+              exit 1
           fi
 
           npm install
           echo "==> Building frontend..."
-          npm run build 2>&1 || echo "Build warning (non-fatal)"
-
-          # Stop and delete conflicting old processes if they exist
-          pm2 delete BharatRegistry-Frontend 2>/dev/null || true
-
-          # Start or restart frontend with PM2
+          npm run build
+          
           pm2 describe bharat-frontend > /dev/null 2>&1
           if [ $? -eq 0 ]; then
-              echo "==> Restarting bharat-frontend..."
               pm2 restart bharat-frontend --update-env
           else
-              echo "==> Starting bharat-frontend..."
-              pm2 serve dist 5173 --name bharat-frontend --spa -f
+              pm2 serve dist 5173 --name bharat-frontend --spa --update-env
           fi
 
-          sleep 3
-
-          # ==================== PM2 PERSISTENCE ====================
-          echo "==> Configuring PM2 to start on system startup..."
+          # Save PM2 state
           pm2 save
-          # Use dynamic PM2 setup based on node version
-          sudo env PATH=$PATH:$(dirname $(which node)) pm2 startup systemd -u $USER --hp $USER_HOME || true
 
-          # ==================== VERIFICATION ====================
-          echo "==> Verifying services..."
-          pm2 list
-
-          echo ""
           echo "======================================"
-          echo "✓ Deployment Complete!"
-          echo "======================================"
-          echo "Frontend: https://$DOMAIN"
-          echo "Backend API: https://$DOMAIN/api"
+          echo "✓ Deployment Script Complete!"
           echo "======================================"

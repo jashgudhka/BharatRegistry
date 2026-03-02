@@ -24,7 +24,7 @@ import { useAuth } from "../../hooks/useAuth";
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isConnected } = useAccount();
-  const { user, isAuthenticated, isAdmin, isVerifier, isBank } = useAuth();
+  const { user, isAuthenticated, isAdmin, isVerifier, isBank, isRegistered, isLoading, login } = useAuth();
   const location = useLocation();
 
   const isActive = (href) => location.pathname === href || location.pathname.startsWith(href + "/");
@@ -113,10 +113,19 @@ export default function Layout({ children }) {
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
-              {isConnected && !isAuthenticated && (
+              {isConnected && !isAuthenticated && !isRegistered && (
                 <Link to="/register" className="btn btn-primary text-sm py-2 px-4 hidden md:flex">
                   <UserPlus size={16} /> Register
                 </Link>
+              )}
+              {isConnected && !isAuthenticated && isRegistered && (
+                <button
+                  onClick={login}
+                  disabled={isLoading}
+                  className="btn btn-primary text-sm py-2 px-4 hidden md:flex disabled:opacity-50"
+                >
+                  <LogIn size={16} /> {isLoading ? "Logging in..." : "Login"}
+                </button>
               )}
               
               {isAuthenticated && (
@@ -197,7 +206,7 @@ export default function Layout({ children }) {
                 ))}
               </div>
             )}
-            {isConnected && !isAuthenticated && (
+            {isConnected && !isAuthenticated && !isRegistered && (
               <div className="pt-2 mt-2 border-t border-slate-200/50">
                 <Link
                   to="/register"
@@ -207,6 +216,18 @@ export default function Layout({ children }) {
                   <UserPlus size={20} className="stroke-[2.5]" />
                   Register Account
                 </Link>
+              </div>
+            )}
+            {isConnected && !isAuthenticated && isRegistered && (
+                <div className="pt-2 mt-2 border-t border-slate-200/50">
+                <button
+                  onClick={() => { login(); setMobileMenuOpen(false); }}
+                  disabled={isLoading}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors disabled:opacity-50 text-left"
+                >
+                  <LogIn size={20} className="stroke-[2.5]" />
+                  {isLoading ? "Logging in..." : "Login"}
+                </button>
               </div>
             )}
           </div>
