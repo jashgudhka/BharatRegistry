@@ -87,40 +87,40 @@ jobs:
 
           # Using single quotes for NGINX_CONFIG heredoc prevents bash variable expansion
           sudo tee /etc/nginx/sites-available/BharatRegistry > /dev/null <<'NGINX_CONFIG'
-upstream backend {
-    server 127.0.0.1:5000;
-}
+          upstream backend {
+              server 127.0.0.1:5000;
+          }
 
-upstream frontend {
-    server 127.0.0.1:5173;
-}
+          upstream frontend {
+              server 127.0.0.1:5173;
+          }
 
-server {
-    listen 80;
-    listen [::]:80;
-    server_name bhoomichain.centralindia.cloudapp.azure.com www.bhoomichain.centralindia.cloudapp.azure.com;
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name bhoomichain.centralindia.cloudapp.azure.com www.bhoomichain.centralindia.cloudapp.azure.com;
 
-    client_max_body_size 50M;
+              client_max_body_size 50M;
 
-    location / {
-        proxy_pass http://frontend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
+              location / {
+                  proxy_pass http://frontend;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
 
-    location /api/ {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-NGINX_CONFIG
+              location /api/ {
+                  proxy_pass http://backend;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+          NGINX_CONFIG
 
           if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
               echo "==> SSL certificates found, configuring HTTPS..."
