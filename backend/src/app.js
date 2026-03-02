@@ -118,6 +118,7 @@ app.use((err, req, res, next) => {
 
 // Database connection and server start
 const PORT = process.env.PORT || 5000;
+const { setupGlobalEventListeners } = require("./services/eventListener");
 
 const startServer = async () => {
   try {
@@ -126,6 +127,13 @@ const startServer = async () => {
       process.env.MONGODB_URI || "mongodb://localhost:27017/bharat-registry";
     await mongoose.connect(mongoUri);
     console.log("📦 Connected to MongoDB");
+    
+    // Start blockchain event listeners
+    try {
+      setupGlobalEventListeners();
+    } catch (err) {
+      console.error("⚠️ Failed to setup blockchain event listeners:", err.message);
+    }
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Bharat Registry API Server`);

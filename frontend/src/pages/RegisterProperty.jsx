@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import {
@@ -13,14 +13,19 @@ import {
   ShieldCheck
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { decodeEventLog } from "viem";
+import { LAND_REGISTRY_ABI } from "../config/LandRegistryABI";
+import { propertyAPI } from "../utils/api";
 import { useRegisterProperty } from "../hooks/useContract";
 import { PROPERTY_TYPES, INDIAN_STATES } from "../utils/constants";
 
 export default function RegisterProperty() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
-  const { registerProperty, isLoading, isSuccess, hash, error } =
+  const { registerProperty, isLoading, isSuccess, hash, error, receipt } =
     useRegisterProperty();
+
+  const [hasSynced, setHasSynced] = useState(false);
 
   const [formData, setFormData] = useState({
     surveyNumber: "",
@@ -36,6 +41,53 @@ export default function RegisterProperty() {
   if (!isConnected) {
     return <Navigate to="/" replace />;
   }
+
+  useEffect(() => {
+    const syncProperty = async () => {
+      if (isSuccess && receipt && !hasSynced) {
+        setHasSynced(true);
+        try {
+          // Find PropertyRegistered event in logs
+          for (const log of receipt.logs) {
+            try {
+              const decoded = decodeEventLog({
+                abi: LAND_REGISTRY_ABI,
+                data: log.data,
+                topics: log.topics,
+              });
+              
+              if (decoded.eventName === 'PropertyRegistered') {
+                const propertyId = decoded.args.propertyId.toString();
+                
+                // Call backend sync
+                await propertyAPI.sync(propertyId, {
+                  transactionHash: hash,
+                  metadata: {
+                    type: formData.propertyType,
+                    city: formData.city,
+                    state: formData.state,
+                  },
+                  documents: formData.ipfsHash ? [{
+                    name: 'Property Deed',
+                    ipfsHash: formData.ipfsHash,
+                    documentType: 'deed'
+                  }] : []
+                });
+                break;
+              }
+            } catch (e) {
+              // Log might not belong to our contract or not match ABI
+              continue;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to sync property to backend:", err);
+        }
+      }
+    };
+    
+    syncProperty();
+  }, [isSuccess, receipt, hasSynced, hash, formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

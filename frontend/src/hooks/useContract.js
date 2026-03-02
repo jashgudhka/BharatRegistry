@@ -66,7 +66,7 @@ export function useTotalProperties() {
 export function useRegisterProperty() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({
     hash,
   })
 
@@ -88,6 +88,7 @@ export function useRegisterProperty() {
     isSuccess,
     error,
     hash,
+    receipt,
   }
 }
 
