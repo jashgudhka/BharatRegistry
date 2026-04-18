@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { ethers } = require("ethers");
+const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const { auth } = require("../middleware/auth");
+const { signJwt } = require("../utils/jwt");
 const {
   validateAadhaar,
   validatePAN,
@@ -13,11 +14,39 @@ const {
   validatePincode,
 } = require("../utils/validators");
 
+const buildWalletSignatureMessage = (nonce) =>
+  `Sign this message to authenticate your wallet with Bharat Registry:\n\nNonce: ${nonce}`;
+
+const findWalletOwner = (walletAddress, excludedUserId = null) => {
+  const query = {
+    $or: [{ walletAddress }, { "linkedWallets.address": walletAddress }],
+  };
+
+  if (excludedUserId) {
+    query._id = { $ne: excludedUserId };
+  }
+
+  return User.findOne(query);
+};
+
+const generateToken = (user) => {
+  return signJwt(
+    {
+      userId: user._id,
+      email: user.email,
+      walletAddress: user.walletAddress,
+      role: user.role,
+      isVerified: user.isVerified,
+    },
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+  );
+};
+
 /**
  * @swagger
  * /api/auth/check/{walletAddress}:
  *   get:
- *     summary: Check if wallet is registered on the platform
+ *     summary: Check if wallet is linked to any account
  *     tags: [Auth]
  */
 router.get("/check/:walletAddress", async (req, res, next) => {
@@ -25,12 +54,7 @@ router.get("/check/:walletAddress", async (req, res, next) => {
     const { walletAddress } = req.params;
     const normalizedAddress = walletAddress.toLowerCase();
 
-    const user = await User.findOne({
-      $or: [
-        { walletAddress: normalizedAddress },
-        { "linkedWallets.address": normalizedAddress },
-      ],
-    });
+    const user = await findWalletOwner(normalizedAddress);
 
     if (!user) {
       return res.json({
@@ -38,7 +62,8 @@ router.get("/check/:walletAddress", async (req, res, next) => {
         data: {
           registered: false,
           registrationComplete: false,
-          message: "Wallet not registered. Please register on the platform first.",
+          walletLinked: false,
+          message: "Wallet not linked. Please login and link your wallet.",
         },
       });
     }
@@ -48,9 +73,9 @@ router.get("/check/:walletAddress", async (req, res, next) => {
       data: {
         registered: true,
         registrationComplete: user.registrationComplete,
-        isVerified: user.isVerified,
-        role: user.role,
-        fullName: user.fullName,
+        walletLinked: true,
+        message:
+          "Wallet linked to an account. Please authenticate to continue.",
       },
     });
   } catch (error) {
@@ -62,43 +87,41 @@ router.get("/check/:walletAddress", async (req, res, next) => {
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new user with personal details
+ *     summary: Register a new user with email and password
  *     tags: [Auth]
  */
 router.post("/register", async (req, res, next) => {
   try {
     const {
-      walletAddress,
+      email,
+      password,
       fullName,
       fatherName,
       dateOfBirth,
       gender,
       phone,
-      email,
       address,
       panNumber,
       aadhaarNumber,
     } = req.body;
 
-    if (!walletAddress) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Wallet address is required",
+        message: "Email and password are required",
       });
     }
 
-    const normalizedAddress = walletAddress.toLowerCase();
+    const normalizedEmail = email.toLowerCase();
 
-    // Check if wallet already registered
-    const existing = await User.findOne({ walletAddress: normalizedAddress });
-    if (existing && existing.registrationComplete) {
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
       return res.status(400).json({
         success: false,
-        message: "This wallet is already registered",
+        message: "Email is already registered",
       });
     }
 
-    // Validate required fields
     if (!fullName || fullName.trim().length < 2) {
       return res.status(400).json({
         success: false,
@@ -120,7 +143,6 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Validate phone
     if (phone) {
       const phoneResult = validatePhone(phone);
       if (!phoneResult.valid) {
@@ -131,7 +153,6 @@ router.post("/register", async (req, res, next) => {
       }
     }
 
-    // Validate PAN
     if (!panNumber) {
       return res.status(400).json({
         success: false,
@@ -146,10 +167,8 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Check PAN uniqueness
     const existingPan = await User.findOne({
       panNumber: panNumber.toUpperCase(),
-      walletAddress: { $ne: normalizedAddress },
     });
     if (existingPan) {
       return res.status(400).json({
@@ -158,7 +177,6 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Validate Aadhaar
     if (!aadhaarNumber) {
       return res.status(400).json({
         success: false,
@@ -173,11 +191,9 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Check Aadhaar uniqueness (compare hashes)
     const aadhaarHashed = hashAadhaar(aadhaarNumber);
     const existingAadhaar = await User.findOne({
       aadhaarHash: aadhaarHashed,
-      walletAddress: { $ne: normalizedAddress },
     });
     if (existingAadhaar) {
       return res.status(400).json({
@@ -187,20 +203,16 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Validate address
-    if (address) {
-      if (address.pincode) {
-        const pincodeResult = validatePincode(address.pincode);
-        if (!pincodeResult.valid) {
-          return res.status(400).json({
-            success: false,
-            message: pincodeResult.error,
-          });
-        }
+    if (address && address.pincode) {
+      const pincodeResult = validatePincode(address.pincode);
+      if (!pincodeResult.valid) {
+        return res.status(400).json({
+          success: false,
+          message: pincodeResult.error,
+        });
       }
     }
 
-    // Calculate age
     const dob = new Date(dateOfBirth);
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
@@ -216,51 +228,40 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    // Generate nonce for immediate login
-    const nonce = crypto.randomBytes(32).toString("hex");
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create or update user
     const userData = {
-      walletAddress: normalizedAddress,
+      email: normalizedEmail,
+      password: hashedPassword,
       fullName: fullName.trim(),
       fatherName: fatherName?.trim(),
       dateOfBirth: dob,
       age,
       gender,
       phone,
-      email: email?.toLowerCase(),
       address: address || {},
       panNumber: panNumber.toUpperCase(),
       panType: panResult.type,
       aadhaarHash: aadhaarHashed,
       registrationComplete: true,
-      nonce,
     };
 
-    const user = await User.findOneAndUpdate(
-      { walletAddress: normalizedAddress },
-      userData,
-      { upsert: true, new: true }
-    );
+    const user = await User.create(userData);
 
     res.status(201).json({
       success: true,
-      message: "Registration successful! You can now connect your wallet.",
+      message: "Registration successful! You can now log in.",
       data: {
-        walletAddress: user.walletAddress,
+        email: user.email,
         fullName: user.fullName,
-        role: user.role,
-        isVerified: user.isVerified,
-        registrationComplete: user.registrationComplete,
-        nonce,
-        message: `Sign this message to authenticate with Bharat Registry:\n\nNonce: ${nonce}`,
       },
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: "This wallet address or identity is already registered",
+        message: "Email or identity is already registered",
       });
     }
     next(error);
@@ -269,42 +270,74 @@ router.post("/register", async (req, res, next) => {
 
 /**
  * @swagger
- * /api/auth/nonce/{walletAddress}:
- *   get:
- *     summary: Get nonce for wallet signature (only for registered users)
+ * /api/auth/login:
+ *   post:
+ *     summary: Login with email and password
  *     tags: [Auth]
  */
-router.get("/nonce/:walletAddress", async (req, res, next) => {
+router.post("/login", async (req, res, next) => {
   try {
-    const { walletAddress } = req.params;
-    const normalizedAddress = walletAddress.toLowerCase();
+    const { email, password } = req.body;
 
-    // Find registered user
-    const user = await User.findOne({
-      $or: [
-        { walletAddress: normalizedAddress },
-        { "linkedWallets.address": normalizedAddress },
-      ],
-    });
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+password",
+    );
 
     if (!user) {
-      return res.status(403).json({
+      return res.status(401).json({
         success: false,
-        message:
-          "Wallet not registered. Please register on the platform first.",
-        requiresRegistration: true,
+        message: "Invalid credentials",
       });
     }
 
-    if (!user.registrationComplete) {
-      return res.status(403).json({
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
         success: false,
-        message: "Registration not complete. Please complete your registration.",
-        requiresRegistration: true,
+        message: "Invalid credentials",
       });
     }
 
-    // Generate random nonce
+    const token = generateToken(user);
+
+    res.json({
+      success: true,
+      message: "Logged in successfully",
+      data: {
+        token,
+        user: {
+          email: user.email,
+          fullName: user.fullName,
+          walletAddress: user.walletAddress,
+          role: user.role,
+          isVerified: user.isVerified,
+          registrationComplete: user.registrationComplete,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/nonce:
+ *   get:
+ *     summary: Get nonce to sign for wallet linking
+ *     tags: [Auth]
+ */
+router.get("/nonce", auth, async (req, res, next) => {
+  try {
+    const user = req.user;
     const nonce = crypto.randomBytes(32).toString("hex");
     user.nonce = nonce;
     await user.save();
@@ -313,7 +346,7 @@ router.get("/nonce/:walletAddress", async (req, res, next) => {
       success: true,
       data: {
         nonce,
-        message: `Sign this message to authenticate with Bharat Registry:\n\nNonce: ${nonce}`,
+        message: buildWalletSignatureMessage(nonce),
       },
     });
   } catch (error) {
@@ -325,39 +358,45 @@ router.get("/nonce/:walletAddress", async (req, res, next) => {
  * @swagger
  * /api/auth/verify:
  *   post:
- *     summary: Verify wallet signature and get JWT
+ *     summary: Verify signature and link wallet to account
  *     tags: [Auth]
  */
-router.post("/verify", async (req, res, next) => {
+router.post("/verify", auth, async (req, res, next) => {
   try {
     const { walletAddress, signature } = req.body;
+
+    if (!walletAddress || !signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet address and signature are required",
+      });
+    }
+
     const normalizedAddress = walletAddress.toLowerCase();
+    const user = req.user;
 
-    // Find user (check both primary and linked wallets)
-    let user = await User.findOne({
-      $or: [
-        { walletAddress: normalizedAddress },
-        { "linkedWallets.address": normalizedAddress },
-      ],
-    });
-
-    if (!user || !user.nonce) {
+    if (!user.nonce) {
       return res.status(400).json({
         success: false,
         message: "Please request a nonce first",
       });
     }
 
-    if (!user.registrationComplete) {
-      return res.status(403).json({
+    // Check if wallet is used by someone else
+    const existingWalletOwner = await findWalletOwner(
+      normalizedAddress,
+      user._id,
+    );
+
+    if (existingWalletOwner) {
+      return res.status(400).json({
         success: false,
-        message: "Registration not complete",
-        requiresRegistration: true,
+        message: "This wallet is already linked to another account",
       });
     }
 
     // Verify signature
-    const message = `Sign this message to authenticate with Bharat Registry:\n\nNonce: ${user.nonce}`;
+    const message = buildWalletSignatureMessage(user.nonce);
     const recoveredAddress = ethers.verifyMessage(message, signature);
 
     if (recoveredAddress.toLowerCase() !== normalizedAddress) {
@@ -367,29 +406,38 @@ router.post("/verify", async (req, res, next) => {
       });
     }
 
-    // Generate new nonce for next login
+    // Clear nonce
     user.nonce = crypto.randomBytes(32).toString("hex");
+
+    // Link wallet
+    if (!user.walletAddress) {
+      user.walletAddress = normalizedAddress;
+    } else if (user.walletAddress !== normalizedAddress) {
+      const isAlreadyLinked = user.linkedWallets.find(
+        (w) => w.address === normalizedAddress,
+      );
+      if (!isAlreadyLinked) {
+        user.linkedWallets.push({
+          address: normalizedAddress,
+          label: "Additional Wallet",
+        });
+      }
+    }
+
     await user.save();
 
-    // Generate JWT
-    const token = jwt.sign(
-      {
-        walletAddress: user.walletAddress,
-        role: user.role,
-        isVerified: user.isVerified,
-      },
-      process.env.JWT_SECRET || "bharat-registry-secret-key",
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+    // Re-issue token with new wallet address
+    const token = generateToken(user);
 
     res.json({
       success: true,
+      message: "Wallet linked successfully!",
       data: {
         token,
         user: {
-          walletAddress: user.walletAddress,
-          fullName: user.fullName,
           email: user.email,
+          fullName: user.fullName,
+          walletAddress: user.walletAddress,
           role: user.role,
           isVerified: user.isVerified,
           registrationComplete: user.registrationComplete,
@@ -409,24 +457,25 @@ router.post("/verify", async (req, res, next) => {
  *     tags: [Auth]
  */
 router.get("/me", auth, async (req, res) => {
+  const user = req.user;
   res.json({
     success: true,
     data: {
-      walletAddress: req.user.walletAddress,
-      fullName: req.user.fullName,
-      fatherName: req.user.fatherName,
-      dateOfBirth: req.user.dateOfBirth,
-      age: req.user.age,
-      gender: req.user.gender,
-      email: req.user.email,
-      phone: req.user.phone,
-      address: req.user.address,
-      panNumber: req.user.panNumber,
-      role: req.user.role,
-      isVerified: req.user.isVerified,
-      registrationComplete: req.user.registrationComplete,
-      linkedWallets: req.user.linkedWallets,
-      createdAt: req.user.createdAt,
+      email: user.email,
+      walletAddress: user.walletAddress,
+      fullName: user.fullName,
+      fatherName: user.fatherName,
+      dateOfBirth: user.dateOfBirth,
+      age: user.age,
+      gender: user.gender,
+      phone: user.phone,
+      address: user.address,
+      panNumber: user.panNumber,
+      role: user.role,
+      isVerified: user.isVerified,
+      registrationComplete: user.registrationComplete,
+      linkedWallets: user.linkedWallets,
+      createdAt: user.createdAt,
     },
   });
 });
@@ -435,29 +484,40 @@ router.get("/me", auth, async (req, res) => {
  * @swagger
  * /api/auth/link-wallet:
  *   post:
- *     summary: Link an additional wallet to the account
+ *     summary: Link an additional wallet to the account manually
  *     tags: [Auth]
  */
 router.post("/link-wallet", auth, async (req, res, next) => {
   try {
-    const { walletAddress, label } = req.body;
+    const { walletAddress, signature, label } = req.body;
 
-    if (!walletAddress) {
+    if (!walletAddress || !signature) {
       return res.status(400).json({
         success: false,
-        message: "Wallet address is required",
+        message: "Wallet address and signature are required",
       });
     }
 
     const normalizedAddress = walletAddress.toLowerCase();
+    const user = req.user;
 
-    // Check if wallet is already used
-    const existing = await User.findOne({
-      $or: [
-        { walletAddress: normalizedAddress },
-        { "linkedWallets.address": normalizedAddress },
-      ],
-    });
+    if (!user.nonce) {
+      return res.status(400).json({
+        success: false,
+        message: "Please request a nonce first",
+      });
+    }
+
+    const message = buildWalletSignatureMessage(user.nonce);
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    if (recoveredAddress.toLowerCase() !== normalizedAddress) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid signature",
+      });
+    }
+
+    const existing = await findWalletOwner(normalizedAddress, user._id);
 
     if (existing) {
       return res.status(400).json({
@@ -466,18 +526,32 @@ router.post("/link-wallet", auth, async (req, res, next) => {
       });
     }
 
-    const user = await User.findOneAndUpdate(
-      { walletAddress: req.user.walletAddress },
-      {
-        $push: {
-          linkedWallets: {
-            address: normalizedAddress,
-            label: label || "Additional Wallet",
-          },
-        },
-      },
-      { new: true }
+    if (user.walletAddress === normalizedAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "This wallet is already your primary wallet",
+      });
+    }
+
+    const alreadyLinked = user.linkedWallets.some(
+      (wallet) => wallet.address === normalizedAddress,
     );
+    if (alreadyLinked) {
+      return res.status(400).json({
+        success: false,
+        message: "This wallet is already linked to your account",
+      });
+    }
+
+    user.linkedWallets.push({
+      address: normalizedAddress,
+      label: label || "Additional Wallet",
+    });
+
+    // Rotate nonce so signatures cannot be replayed.
+    user.nonce = crypto.randomBytes(32).toString("hex");
+
+    await user.save();
 
     res.json({
       success: true,
@@ -500,26 +574,23 @@ router.post("/link-wallet", auth, async (req, res, next) => {
  */
 router.put("/profile", auth, async (req, res, next) => {
   try {
-    const { fullName, email, phone, address } = req.body;
+    const { fullName, phone, address } = req.body;
 
     const updateData = {};
     if (fullName) updateData.fullName = fullName;
-    if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
 
-    const user = await User.findOneAndUpdate(
-      { walletAddress: req.walletAddress },
-      updateData,
-      { new: true }
-    );
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, {
+      new: true,
+    });
 
     res.json({
       success: true,
       data: {
+        email: user.email,
         walletAddress: user.walletAddress,
         fullName: user.fullName,
-        email: user.email,
         phone: user.phone,
         address: user.address,
         role: user.role,

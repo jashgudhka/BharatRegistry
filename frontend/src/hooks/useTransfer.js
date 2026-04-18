@@ -4,7 +4,11 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
-import { TRANSFER_ADDRESS, TRANSFER_STATUS } from "../utils/constants";
+import {
+  TRANSFER_ADDRESS,
+  TRANSFER_STATUS,
+  normalizeTransferStatus,
+} from "../utils/constants";
 import { TRANSFER_ABI } from "../config/TransferABI";
 
 /**
@@ -27,7 +31,7 @@ export function useTransfer(transferId) {
         buyer: data.buyer,
         agreedPrice: formatUnits(data.agreedPrice, 18),
         escrowAmount: formatUnits(data.escrowAmount, 18),
-        status: TRANSFER_STATUS[data.status],
+        status: normalizeTransferStatus(TRANSFER_STATUS[data.status]),
         initiatedAt: new Date(Number(data.createdAt) * 1000),
         completedAt:
           data.completedAt > 0
@@ -77,14 +81,19 @@ export function usePropertyTransfers(propertyId) {
  * Hook to initiate a transfer
  */
 export function useInitiateTransfer() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const initiateTransfer = async (propertyId, offeredPrice) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "initiateTransfer",
@@ -93,6 +102,8 @@ export function useInitiateTransfer() {
       maxPriorityFeePerGas: 0n,
       gas: 1000000n,
     });
+
+    return txHash;
   };
 
   return {
@@ -108,14 +119,19 @@ export function useInitiateTransfer() {
  * Hook to deposit escrow
  */
 export function useDepositEscrow() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const depositEscrow = async (transferId, amount) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "depositEscrow",
@@ -125,6 +141,8 @@ export function useDepositEscrow() {
       maxPriorityFeePerGas: 0n,
       gas: 1000000n,
     });
+
+    return txHash;
   };
 
   return {
@@ -140,14 +158,19 @@ export function useDepositEscrow() {
  * Hook to approve transfer as seller
  */
 export function useApproveAsSeller() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const approveAsSeller = async (transferId) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "approveTransferAsSeller",
@@ -156,6 +179,8 @@ export function useApproveAsSeller() {
       maxPriorityFeePerGas: 0n,
       gas: 500000n,
     });
+
+    return txHash;
   };
 
   return {
@@ -171,14 +196,19 @@ export function useApproveAsSeller() {
  * Hook to approve transfer as government/registrar
  */
 export function useApproveAsGovernment() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const approveAsGovernment = async (transferId) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "approveTransferAsRegistrar",
@@ -187,6 +217,8 @@ export function useApproveAsGovernment() {
       maxPriorityFeePerGas: 0n,
       gas: 500000n,
     });
+
+    return txHash;
   };
 
   return {
@@ -202,14 +234,19 @@ export function useApproveAsGovernment() {
  * Hook to complete transfer
  */
 export function useCompleteTransfer() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const completeTransfer = async (transferId) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "completeTransfer",
@@ -218,6 +255,8 @@ export function useCompleteTransfer() {
       maxPriorityFeePerGas: 0n,
       gas: 1000000n,
     });
+
+    return txHash;
   };
 
   return {
@@ -233,14 +272,19 @@ export function useCompleteTransfer() {
  * Hook to cancel transfer
  */
 export function useCancelTransfer() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    error,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const cancelTransfer = async (transferId, reason) => {
-    writeContract({
+    const txHash = await writeContractAsync({
       address: TRANSFER_ADDRESS,
       abi: TRANSFER_ABI,
       functionName: "cancelTransfer",
@@ -249,6 +293,8 @@ export function useCancelTransfer() {
       maxPriorityFeePerGas: 0n,
       gas: 500000n,
     });
+
+    return txHash;
   };
 
   return {

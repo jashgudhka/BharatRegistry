@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { ArrowLeft, MapPin, Maximize, Tag, User, Calendar, FileText, ExternalLink, Send, Shield, Activity, Share2, CheckCircle } from 'lucide-react'
 import { useProperty, useIsPropertyVerified } from '../hooks/useContract'
 import { usePropertyTransfers } from '../hooks/useTransfer'
+import { useAuth } from '../hooks/useAuth'
 import { PROPERTY_STATUS_LABELS } from '../utils/constants'
 import InitiateTransferModal from '../components/transfer/InitiateTransferModal'
 import { useState } from 'react'
@@ -10,6 +11,7 @@ import { useState } from 'react'
 export default function PropertyDetails() {
   const { propertyId } = useParams()
   const { address, isConnected } = useAccount()
+  const { hasWallet } = useAuth()
   const { property, isLoading, error } = useProperty(propertyId)
   const { isVerified } = useIsPropertyVerified(propertyId)
   const { transferIds } = usePropertyTransfers(propertyId)
@@ -55,8 +57,8 @@ export default function PropertyDetails() {
     )
   }
 
-  const isOwner = isConnected && address?.toLowerCase() === property.currentOwner.toLowerCase()
-  const canBuy = isConnected && !isOwner && property.status === 'verified'
+  const isOwner = isConnected && hasWallet && address?.toLowerCase() === property.currentOwner.toLowerCase()
+  const canBuy = isConnected && hasWallet && !isOwner && property.status === 'verified'
 
   const statusColors = {
     pending: 'badge-pending',

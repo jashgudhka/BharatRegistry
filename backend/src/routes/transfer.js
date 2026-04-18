@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Transaction = require("../models/Transaction");
 const { auth, authorize } = require("../middleware/auth");
+const { requireWallet } = require("../middleware/requireWallet");
 const {
   validateTransferId,
   validatePagination,
@@ -153,6 +154,7 @@ router.get("/property/:propertyId", async (req, res, next) => {
 router.post(
   "/sync/:transferId",
   auth,
+  requireWallet,
   validateTransferId,
   async (req, res, next) => {
     try {

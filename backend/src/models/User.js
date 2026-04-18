@@ -2,10 +2,10 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    // Primary wallet used for registration
+    // Primary wallet used for blockchain interactions
     walletAddress: {
       type: String,
-      required: true,
+      sparse: true,
       unique: true,
       lowercase: true,
     },
@@ -18,6 +18,12 @@ const userSchema = new mongoose.Schema(
         label: String,
       },
     ],
+
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
 
     // Personal Details
     fullName: {
@@ -43,7 +49,8 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      sparse: true,
+      required: true,
+      unique: true,
       lowercase: true,
     },
 
@@ -117,7 +124,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Indexes

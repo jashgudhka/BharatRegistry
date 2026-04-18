@@ -103,8 +103,9 @@ contract LandRegistry is ILandRegistry, AccessControl, ReentrancyGuard, Pausable
         whenNotPaused 
     {
         require(
-            _properties[_propertyId].status == PropertyStatus.Pending, 
-            "LandRegistry: Property not in pending status"
+            _properties[_propertyId].status == PropertyStatus.Pending ||
+            _properties[_propertyId].status == PropertyStatus.Transferred,
+            "LandRegistry: Property not eligible for verification"
         );
 
         _properties[_propertyId].status = PropertyStatus.Verified;
@@ -166,6 +167,12 @@ contract LandRegistry is ILandRegistry, AccessControl, ReentrancyGuard, Pausable
         
         // Update property owner
         _properties[_propertyId].currentOwner = _newOwner;
+
+        // Property leaves verified state until it is verified again for resale.
+        if (_totalVerifiedProperties > 0) {
+            _totalVerifiedProperties--;
+        }
+
         _properties[_propertyId].status = PropertyStatus.Transferred;
 
         emit PropertyTransferred(_propertyId, previousOwner, _newOwner);

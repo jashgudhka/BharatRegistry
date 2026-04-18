@@ -6,121 +6,48 @@ export function useAuth() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("bharat_user")) || null);
   const [token, setToken] = useState(localStorage.getItem("bharat_token"));
   const [isLoading, setIsLoading] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [registrationComplete, setRegistrationComplete] = useState(false);
   const [error, setError] = useState(null);
 
-  // Check registration status when wallet connects
-  const checkRegistration = useCallback(async () => {
-    if (!address) return;
-
-    try {
-      const res = await authAPI.checkWallet(address);
-      const data = res.data.data;
-      setIsRegistered(data.registered);
-      setRegistrationComplete(data.registrationComplete);
-
-      if (data.registered && data.registrationComplete) {
-        // Try to use existing token
-        if (token) {
-          try {
-            const meRes = await authAPI.getMe();
-            setUser(meRes.data.data);
-          } catch {
-            // Token expired, need to re-authenticate
-            localStorage.removeItem("bharat_token");
-            setToken(null);
-            setUser(null);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Check registration error:", err);
-    }
-  }, [address, token]);
-
+  // Check backend session on mount or token change
   useEffect(() => {
-    if (isConnected && address) {
-      checkRegistration();
+    if (token) {
+      refreshUser();
     } else {
       setUser(null);
-      setIsRegistered(false);
-      setRegistrationComplete(false);
     }
-  }, [isConnected, address, checkRegistration]);
+  }, [token]);
 
-  // Register a new user
+  // Register a new user with email and password
   const register = async (formData) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await authAPI.register({
-        ...formData,
-        walletAddress: address,
-      });
-
-      const data = res.data.data;
-
-      // Auto-login: sign the nonce
-      const signature = await signMessageAsync({ message: data.message });
-      const verifyRes = await authAPI.verify(address, signature);
-
-      const { token: newToken, user: newUser } = verifyRes.data.data;
-      localStorage.setItem("bharat_token", newToken);
-      localStorage.setItem("bharat_user", JSON.stringify(newUser));
-      setToken(newToken);
-      setUser(newUser);
-      setIsRegistered(true);
-      setRegistrationComplete(true);
-
-      return { success: true };
+      const res = await authAPI.register(formData);
+      return { success: true, data: res.data };
     } catch (err) {
       let message = err.response?.data?.message;
 
       if (!message && err?.code === "ERR_NETWORK") {
-        message =
-          "Cannot reach backend server. Please ensure API is running on port 5000.";
+        message = "Cannot reach backend server. Please ensure API is running on port 5000.";
       }
 
-      if (!message) {
-        const walletError = err?.shortMessage || err?.message || "";
-        if (/rejected|denied|user rejected/i.test(walletError)) {
-          message =
-            "Wallet signature was rejected. Please approve the signature to complete registration.";
-        }
-      }
-
-      if (!message) {
-        message = "Registration failed";
-      }
-
-      setError(message);
-      return { success: false, error: message };
+      setError(message || "Registration failed");
+      return { success: false, error: message || "Registration failed" };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Login (sign message)
-  const login = async () => {
-    if (!address) return { success: false, error: "No wallet connected" };
-
+  // Login with email and password
+  const login = async (email, password) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Get nonce
-      const nonceRes = await authAPI.getNonce(address);
-      const { message } = nonceRes.data.data;
-
-      // Sign message
-      const signature = await signMessageAsync({ message });
-
-      // Verify signature
-      const verifyRes = await authAPI.verify(address, signature);
-      const { token: newToken, user: newUser } = verifyRes.data.data;
+      const res = await authAPI.login(email, password);
+      const { token: newToken, user: newUser } = res.data.data;
 
       localStorage.setItem("bharat_token", newToken);
       localStorage.setItem("bharat_user", JSON.stringify(newUser));
@@ -131,12 +58,49 @@ export function useAuth() {
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
       setError(message);
-
-      if (err.response?.data?.requiresRegistration) {
-        return { success: false, error: message, requiresRegistration: true };
-      }
-
       return { success: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Link Wagmi wallet to current account
+  const linkWallet = async () => {
+    if (!address) {
+      setError("No wallet connected in MetaMask/WalletConnect");
+      return { success: false, error: "No wallet connected" };
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    try {
+      // 1. Get nonce from server
+      const nonceRes = await authAPI.getNonce();
+      const { message } = nonceRes.data.data;
+
+      // 2. Sign message in browser wallet
+      const signature = await signMessageAsync({ message });
+
+      // 3. Verify on server and link
+      const verifyRes = await authAPI.verify(address, signature);
+      const { token: newToken, user: newUser } = verifyRes.data.data;
+
+      localStorage.setItem("bharat_token", newToken);
+      localStorage.setItem("bharat_user", JSON.stringify(newUser));
+      setToken(newToken);
+      setUser(newUser);
+
+      return { success: true };
+    } catch (err) {
+      let message = err.response?.data?.message;
+      if (!message) {
+        const walletError = err?.shortMessage || err?.message || "";
+        if (/rejected|denied|user rejected/i.test(walletError)) {
+          message = "Wallet signature was rejected. Please approve the signature to link wallet.";
+        }
+      }
+      setError(message || "Wallet linking failed");
+      return { success: false, error: message || "Wallet linking failed" };
     } finally {
       setIsLoading(false);
     }
@@ -150,11 +114,13 @@ export function useAuth() {
     setUser(null);
   };
 
-  // Refresh user data
+  // Refresh user data from API
   const refreshUser = async () => {
     try {
       const res = await authAPI.getMe();
-      setUser(res.data.data);
+      const fetchedUser = res.data.data;
+      setUser(fetchedUser);
+      localStorage.setItem("bharat_user", JSON.stringify(fetchedUser));
     } catch {
       // Token might be expired
       logout();
@@ -165,15 +131,14 @@ export function useAuth() {
     user,
     token,
     isLoading,
-    isRegistered,
-    registrationComplete,
     isAuthenticated: !!user && !!token,
+    hasWallet: !!user?.walletAddress,
     error,
     register,
     login,
+    linkWallet,
     logout,
     refreshUser,
-    checkRegistration,
     isAdmin: user?.role === "admin",
     isVerifier: user?.role === "verifier" || user?.role === "admin",
     isRegistrar: user?.role === "registrar" || user?.role === "admin",

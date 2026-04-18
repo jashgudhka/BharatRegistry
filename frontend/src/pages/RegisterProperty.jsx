@@ -22,6 +22,7 @@ import { PROPERTY_TYPES, INDIAN_STATES } from "../utils/constants";
 export default function RegisterProperty() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
+  const { hasWallet } = useAuth();
   const { registerProperty, isLoading, isSuccess, hash, error, receipt } =
     useRegisterProperty();
 
@@ -38,8 +39,8 @@ export default function RegisterProperty() {
     ipfsHash: "",
   });
 
-  if (!isConnected) {
-    return <Navigate to="/" replace />;
+  if (!isConnected || !hasWallet) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   useEffect(() => {

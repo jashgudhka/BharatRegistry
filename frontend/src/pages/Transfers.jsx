@@ -1,20 +1,28 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
-import { Filter, Clock, CheckCircle, XCircle, Send, ArrowRight, Home } from "lucide-react";
+import {
+  Filter,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Send,
+  ArrowRight,
+  Home,
+} from "lucide-react";
 import { useUserTransfers, useTransfer } from "../hooks/useTransfer";
 import { TRANSFER_STATUS_LABELS } from "../utils/constants";
 
-function TransferCard({ transferId }) {
+function TransferCard({ transferId, statusFilter }) {
   const { transfer, isLoading } = useTransfer(transferId);
 
   if (isLoading) {
     return (
       <div className="glass-panel p-6 h-64 skeleton flex flex-col justify-between">
         <div>
-           <div className="h-6 bg-slate-200/50 rounded w-1/3 mb-2"></div>
-           <div className="h-4 bg-slate-200/50 rounded w-1/4 mb-6"></div>
-           <div className="h-12 bg-slate-200/50 rounded w-full mb-3"></div>
+          <div className="h-6 bg-slate-200/50 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-slate-200/50 rounded w-1/4 mb-6"></div>
+          <div className="h-12 bg-slate-200/50 rounded w-full mb-3"></div>
         </div>
         <div className="h-4 bg-slate-200/50 rounded w-1/3 mt-auto"></div>
       </div>
@@ -23,22 +31,27 @@ function TransferCard({ transferId }) {
 
   if (!transfer) return null;
 
+  if (statusFilter !== "all" && transfer.status !== statusFilter) {
+    return null;
+  }
+
   const statusIcons = {
-    pending: Clock,
-    deposited: Clock,
-    seller_approved: Clock,
-    government_approved: Clock,
+    initiated: Clock,
+    escrow_funded: Clock,
+    approved_by_seller: Clock,
+    approved_by_registrar: Clock,
     completed: CheckCircle,
     cancelled: XCircle,
     disputed: XCircle,
   };
 
   const statusColors = {
-    pending: "badge-pending text-amber-700 bg-amber-50 border-amber-200",
-    deposited: "bg-blue-50 text-blue-700 border-blue-200",
-    seller_approved: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    government_approved: "bg-purple-50 text-purple-700 border-purple-200",
-    completed: "badge-verified text-emerald-700 bg-emerald-50 border-emerald-200",
+    initiated: "badge-pending text-amber-700 bg-amber-50 border-amber-200",
+    escrow_funded: "bg-blue-50 text-blue-700 border-blue-200",
+    approved_by_seller: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    approved_by_registrar: "bg-purple-50 text-purple-700 border-purple-200",
+    completed:
+      "badge-verified text-emerald-700 bg-emerald-50 border-emerald-200",
     cancelled: "badge-disputed text-red-700 bg-red-50 border-red-200",
     disputed: "badge-disputed text-red-700 bg-red-50 border-red-200",
   };
@@ -61,10 +74,12 @@ function TransferCard({ transferId }) {
             </h3>
           </div>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-7 flex items-center gap-1">
-             Property #{transfer.propertyId}
+            Property #{transfer.propertyId}
           </p>
         </div>
-        <span className={`badge ${statusColors[transfer.status]} ml-4 shrink-0 mt-1 flex items-center shadow-sm`}>
+        <span
+          className={`badge ${statusColors[transfer.status]} ml-4 shrink-0 mt-1 flex items-center shadow-sm`}
+        >
           <StatusIcon size={14} className="mr-1.5" />
           {TRANSFER_STATUS_LABELS[transfer.status]}
         </span>
@@ -72,16 +87,26 @@ function TransferCard({ transferId }) {
 
       <div className="space-y-3 text-sm flex-1 relative z-10">
         <div className="flex items-center justify-between p-3 bg-white/60 border border-slate-100 rounded-xl hover:bg-white hover:border-slate-200 transition-colors">
-          <span className="text-slate-500 font-bold uppercase tracking-wider text-xs">Agreed Value</span>
+          <span className="text-slate-500 font-bold uppercase tracking-wider text-xs">
+            Agreed Value
+          </span>
           <span className="font-extrabold text-slate-800 text-base">
-            ₹ {parseFloat(transfer.agreedPrice).toLocaleString()} <span className="text-xs font-semibold text-slate-400 ml-0.5">INR</span>
+            ₹ {parseFloat(transfer.agreedPrice).toLocaleString()}{" "}
+            <span className="text-xs font-semibold text-slate-400 ml-0.5">
+              INR
+            </span>
           </span>
         </div>
         <div className="flex items-center justify-between p-3 bg-emerald-50/50 border border-emerald-100/50 rounded-xl hover:bg-emerald-50 transition-colors">
-          <span className="text-emerald-700 font-bold uppercase tracking-wider text-xs">Escrow Secured</span>
+          <span className="text-emerald-700 font-bold uppercase tracking-wider text-xs">
+            Escrow Secured
+          </span>
           <span className="font-extrabold text-emerald-700 text-base flex items-center gap-1">
-            <CheckCircle size={14} className="text-emerald-500" />
-            ₹ {parseFloat(transfer.escrowAmount).toLocaleString()} <span className="text-xs font-semibold text-emerald-500 ml-0.5">INR</span>
+            <CheckCircle size={14} className="text-emerald-500" />₹{" "}
+            {parseFloat(transfer.escrowAmount).toLocaleString()}{" "}
+            <span className="text-xs font-semibold text-emerald-500 ml-0.5">
+              INR
+            </span>
           </span>
         </div>
       </div>
@@ -113,7 +138,9 @@ export default function Transfers() {
             <Send className="text-white w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Active Transfers</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Active Transfers
+            </h1>
             <p className="text-slate-500 font-medium text-sm mt-1">
               {isConnected
                 ? "Manage and monitor your ongoing property exchange protocols."
@@ -125,35 +152,40 @@ export default function Transfers() {
 
       {/* Filters and Count Header */}
       {isConnected && (
-         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 glass-panel p-4">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-               <div className="w-10 h-10 bg-slate-100 shrink-0 rounded-xl flex items-center justify-center hidden sm:flex">
-                 <Filter size={20} className="text-slate-500" />
-               </div>
-               <select
-                 className="input py-3 w-full sm:w-auto bg-slate-50 border-slate-200 font-medium text-slate-700 cursor-pointer appearance-none pr-10"
-                 value={statusFilter}
-                 onChange={(e) => setStatusFilter(e.target.value)}
-                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
-               >
-                 <option value="all">All Status</option>
-                 <option value="pending">Pending Status</option>
-                 <option value="deposited">Escrow Deposited</option>
-                 <option value="seller_approved">Seller Approved</option>
-                 <option value="government_approved">Authority Approved</option>
-                 <option value="completed">Fully Completed</option>
-                 <option value="cancelled">Cancelled</option>
-                 <option value="disputed">Disputed</option>
-               </select>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 glass-panel p-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="w-10 h-10 bg-slate-100 shrink-0 rounded-xl hidden sm:flex items-center justify-center">
+              <Filter size={20} className="text-slate-500" />
             </div>
-            
-            <div className="flex items-center gap-2">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-               <span className="text-sm font-bold text-slate-500 uppercase tracking-widest shrink-0">
-                 {transferIds?.length || 0} Transfers
-               </span>
-            </div>
-         </div>
+            <select
+              className="input py-3 w-full sm:w-auto bg-slate-50 border-slate-200 font-medium text-slate-700 cursor-pointer appearance-none pr-10"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundPosition: `right 1rem center`,
+                backgroundRepeat: `no-repeat`,
+                backgroundSize: `1.5em 1.5em`,
+              }}
+            >
+              <option value="all">All Status</option>
+              <option value="initiated">Initiated</option>
+              <option value="escrow_funded">Escrow Funded</option>
+              <option value="approved_by_seller">Seller Approved</option>
+              <option value="approved_by_registrar">Registrar Approved</option>
+              <option value="completed">Fully Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="disputed">Disputed</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-sm font-bold text-slate-500 uppercase tracking-widest shrink-0">
+              {transferIds?.length || 0} Transfers
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Transfer Grid */}
@@ -166,17 +198,21 @@ export default function Transfers() {
             Connect Identity Required
           </h3>
           <p className="text-slate-500 font-medium mb-8 max-w-sm">
-            Please authenticate using your Web3 wallet to access your private exchange history.
+            Please authenticate using your Web3 wallet to access your private
+            exchange history.
           </p>
         </div>
       ) : isLoading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="glass-panel p-6 h-64 skeleton flex flex-col justify-between">
+            <div
+              key={i}
+              className="glass-panel p-6 h-64 skeleton flex flex-col justify-between"
+            >
               <div>
-                 <div className="h-6 bg-slate-200/50 rounded w-1/3 mb-2"></div>
-                 <div className="h-4 bg-slate-200/50 rounded w-1/4 mb-6"></div>
-                 <div className="h-12 bg-slate-200/50 rounded w-full mb-3"></div>
+                <div className="h-6 bg-slate-200/50 rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-slate-200/50 rounded w-1/4 mb-6"></div>
+                <div className="h-12 bg-slate-200/50 rounded w-full mb-3"></div>
               </div>
               <div className="h-4 bg-slate-200/50 rounded w-1/3 mt-auto"></div>
             </div>
@@ -185,7 +221,11 @@ export default function Transfers() {
       ) : transferIds?.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {transferIds.map((id) => (
-            <TransferCard key={id} transferId={id} />
+            <TransferCard
+              key={id}
+              transferId={id}
+              statusFilter={statusFilter}
+            />
           ))}
         </div>
       ) : (
@@ -197,9 +237,13 @@ export default function Transfers() {
             No active protocols
           </h3>
           <p className="text-slate-500 font-medium mb-8 max-w-sm">
-            You are not currently involved in any property exchange transactions.
+            You are not currently involved in any property exchange
+            transactions.
           </p>
-          <Link to="/properties" className="btn btn-primary px-8 shadow-lg shadow-emerald-500/20">
+          <Link
+            to="/properties"
+            className="btn btn-primary px-8 shadow-lg shadow-emerald-500/20"
+          >
             Explore Property Registry
           </Link>
         </div>

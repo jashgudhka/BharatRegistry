@@ -4,6 +4,7 @@ const { ethers } = require("ethers");
 const LAND_REGISTRY_ABI = [
   "function registerProperty(string surveyNumber, string location, uint256 area, uint256 marketValue, string ipfsHash) returns (uint256)",
   "function verifyProperty(uint256 propertyId)",
+  "function disputeProperty(uint256 propertyId, string reason)",
   "function getProperty(uint256 propertyId) view returns (tuple(uint256 propertyId, string surveyNumber, string location, uint256 area, address currentOwner, uint256 marketValue, uint8 status, uint256 registrationDate, string ipfsDocumentHash))",
   "function getOwnerProperties(address owner) view returns (uint256[])",
   "function getTotalProperties() view returns (uint256)",
@@ -20,30 +21,96 @@ const TRANSFER_ABI = [
   "function approveTransferAsRegistrar(uint256 transferId)",
   "function completeTransfer(uint256 transferId)",
   "function cancelTransfer(uint256 transferId, string reason)",
+  "function disputeTransfer(uint256 transferId, string reason)",
   "function getTransfer(uint256 transferId) view returns (tuple(uint256 transferId, uint256 propertyId, address seller, address buyer, uint256 agreedPrice, uint256 escrowAmount, uint8 status, uint256 createdAt, uint256 completedAt))",
   "function getPropertyTransfers(uint256 propertyId) view returns (uint256[])",
   "function getUserTransfers(address user) view returns (uint256[])",
   "event TransferInitiated(uint256 indexed transferId, uint256 indexed propertyId, address indexed buyer, uint256 price)",
+  "event EscrowDeposited(uint256 indexed transferId, uint256 amount)",
+  "event TransferApprovedBySeller(uint256 indexed transferId)",
+  "event TransferApprovedByRegistrar(uint256 indexed transferId, address indexed registrar)",
   "event TransferCompleted(uint256 indexed transferId, address indexed from, address indexed to)",
+  "event TransferCancelled(uint256 indexed transferId, string reason)",
+  "event TransferDisputed(uint256 indexed transferId, string reason)",
 ];
 
 class BlockchainService {
   constructor() {
-    this.provider = new ethers.JsonRpcProvider(
-      process.env.RPC_URL || "http://127.0.0.1:8545"
-    );
+    this.rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+    this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
 
-    this.landRegistry = new ethers.Contract(
-      process.env.LAND_REGISTRY_ADDRESS,
-      LAND_REGISTRY_ABI,
-      this.provider
-    );
+    this.landRegistryAddress = process.env.LAND_REGISTRY_ADDRESS;
+    this.transferAddress = process.env.TRANSFER_ADDRESS;
 
-    this.transfer = new ethers.Contract(
-      process.env.TRANSFER_ADDRESS,
-      TRANSFER_ABI,
-      this.provider
-    );
+    this.landRegistry = this.landRegistryAddress
+      ? new ethers.Contract(
+          this.landRegistryAddress,
+          LAND_REGISTRY_ABI,
+          this.provider,
+        )
+      : null;
+
+    this.transfer = this.transferAddress
+      ? new ethers.Contract(this.transferAddress, TRANSFER_ABI, this.provider)
+      : null;
+  }
+
+  getLandRegistryContract() {
+    if (!this.landRegistry) {
+      throw new Error("LAND_REGISTRY_ADDRESS is not configured");
+    }
+    return this.landRegistry;
+  }
+
+  getTransferContract() {
+    if (!this.transfer) {
+      throw new Error("TRANSFER_ADDRESS is not configured");
+    }
+    return this.transfer;
+  }
+
+  async getWritableLandRegistryContract() {
+    const landRegistry = this.getLandRegistryContract();
+
+    try {
+      const signer = process.env.PRIVATE_KEY
+        ? new ethers.Wallet(process.env.PRIVATE_KEY, this.provider)
+        : await this.provider.getSigner();
+
+      return landRegistry.connect(signer);
+    } catch (error) {
+      throw new Error(
+        `Unable to obtain signer for blockchain write operations. Set PRIVATE_KEY or expose an unlocked account on RPC. ${error.message}`,
+      );
+    }
+  }
+
+  async checkConnection(timeoutMs = 3000) {
+    try {
+      await Promise.race([
+        this.provider.send("eth_chainId", []),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("RPC timeout")), timeoutMs);
+        }),
+      ]);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async verifyPropertyOnChain(propertyId) {
+    const landRegistry = await this.getWritableLandRegistryContract();
+    const tx = await landRegistry.verifyProperty(propertyId);
+    await tx.wait();
+    return tx;
+  }
+
+  async disputePropertyOnChain(propertyId, reason) {
+    const landRegistry = await this.getWritableLandRegistryContract();
+    const tx = await landRegistry.disputeProperty(propertyId, reason);
+    await tx.wait();
+    return tx;
   }
 
   /**
@@ -51,7 +118,8 @@ class BlockchainService {
    */
   async getProperty(propertyId) {
     try {
-      const property = await this.landRegistry.getProperty(propertyId);
+      const property =
+        await this.getLandRegistryContract().getProperty(propertyId);
       return {
         propertyId: Number(property.propertyId),
         surveyNumber: property.surveyNumber,
@@ -73,9 +141,8 @@ class BlockchainService {
    */
   async getOwnerProperties(ownerAddress) {
     try {
-      const propertyIds = await this.landRegistry.getOwnerProperties(
-        ownerAddress
-      );
+      const propertyIds =
+        await this.getLandRegistryContract().getOwnerProperties(ownerAddress);
       return propertyIds.map((id) => Number(id));
     } catch (error) {
       throw new Error(`Failed to fetch owner properties: ${error.message}`);
@@ -87,7 +154,7 @@ class BlockchainService {
    */
   async getTotalProperties() {
     try {
-      const total = await this.landRegistry.getTotalProperties();
+      const total = await this.getLandRegistryContract().getTotalProperties();
       return Number(total);
     } catch (error) {
       throw new Error(`Failed to fetch total properties: ${error.message}`);
@@ -99,10 +166,12 @@ class BlockchainService {
    */
   async isPropertyVerified(propertyId) {
     try {
-      return await this.landRegistry.isPropertyVerified(propertyId);
+      return await this.getLandRegistryContract().isPropertyVerified(
+        propertyId,
+      );
     } catch (error) {
       throw new Error(
-        `Failed to check property verification: ${error.message}`
+        `Failed to check property verification: ${error.message}`,
       );
     }
   }
@@ -112,7 +181,7 @@ class BlockchainService {
    */
   async getTransfer(transferId) {
     try {
-      const transfer = await this.transfer.getTransfer(transferId);
+      const transfer = await this.getTransferContract().getTransfer(transferId);
       return {
         transferId: Number(transfer.transferId),
         propertyId: Number(transfer.propertyId),
@@ -137,7 +206,8 @@ class BlockchainService {
    */
   async getPropertyTransfers(propertyId) {
     try {
-      const transferIds = await this.transfer.getPropertyTransfers(propertyId);
+      const transferIds =
+        await this.getTransferContract().getPropertyTransfers(propertyId);
       return transferIds.map((id) => Number(id));
     } catch (error) {
       throw new Error(`Failed to fetch property transfers: ${error.message}`);
@@ -149,7 +219,8 @@ class BlockchainService {
    */
   async getUserTransfers(userAddress) {
     try {
-      const transferIds = await this.transfer.getUserTransfers(userAddress);
+      const transferIds =
+        await this.getTransferContract().getUserTransfers(userAddress);
       return transferIds.map((id) => Number(id));
     } catch (error) {
       throw new Error(`Failed to fetch user transfers: ${error.message}`);
@@ -184,26 +255,44 @@ class BlockchainService {
    * Listen to contract events
    */
   setupEventListeners(callbacks = {}) {
+    const landRegistry = this.getLandRegistryContract();
+    const transfer = this.getTransferContract();
+
     if (callbacks.onPropertyRegistered) {
-      this.landRegistry.on(
-        "PropertyRegistered",
-        callbacks.onPropertyRegistered
-      );
+      landRegistry.on("PropertyRegistered", callbacks.onPropertyRegistered);
     }
     if (callbacks.onPropertyVerified) {
-      this.landRegistry.on("PropertyVerified", callbacks.onPropertyVerified);
+      landRegistry.on("PropertyVerified", callbacks.onPropertyVerified);
     }
     if (callbacks.onPropertyTransferred) {
-      this.landRegistry.on(
-        "PropertyTransferred",
-        callbacks.onPropertyTransferred
-      );
+      landRegistry.on("PropertyTransferred", callbacks.onPropertyTransferred);
     }
     if (callbacks.onTransferInitiated) {
-      this.transfer.on("TransferInitiated", callbacks.onTransferInitiated);
+      transfer.on("TransferInitiated", callbacks.onTransferInitiated);
+    }
+    if (callbacks.onEscrowDeposited) {
+      transfer.on("EscrowDeposited", callbacks.onEscrowDeposited);
+    }
+    if (callbacks.onTransferApprovedBySeller) {
+      transfer.on(
+        "TransferApprovedBySeller",
+        callbacks.onTransferApprovedBySeller,
+      );
+    }
+    if (callbacks.onTransferApprovedByRegistrar) {
+      transfer.on(
+        "TransferApprovedByRegistrar",
+        callbacks.onTransferApprovedByRegistrar,
+      );
     }
     if (callbacks.onTransferCompleted) {
-      this.transfer.on("TransferCompleted", callbacks.onTransferCompleted);
+      transfer.on("TransferCompleted", callbacks.onTransferCompleted);
+    }
+    if (callbacks.onTransferCancelled) {
+      transfer.on("TransferCancelled", callbacks.onTransferCancelled);
+    }
+    if (callbacks.onTransferDisputed) {
+      transfer.on("TransferDisputed", callbacks.onTransferDisputed);
     }
   }
 

@@ -5,6 +5,7 @@ const Property = require("../models/Property");
 const Document = require("../models/Document");
 const Transaction = require("../models/Transaction");
 const { auth, authorize } = require("../middleware/auth");
+const blockchainService = require("../services/blockchainService");
 
 // All admin routes require admin or verifier role
 router.use(auth);
@@ -102,7 +103,7 @@ router.get("/users", async (req, res, next) => {
 
     const [users, total] = await Promise.all([
       User.find(filter)
-        .select("-nonce -aadhaarHash")
+        .select("-password -nonce -aadhaarHash")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -134,7 +135,7 @@ router.get("/users/pending", async (req, res, next) => {
       registrationComplete: true,
       isVerified: false,
     })
-      .select("-nonce")
+      .select("-password -nonce")
       .sort({ createdAt: 1 }); // oldest first
 
     res.json({
@@ -171,8 +172,8 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
     const user = await User.findOneAndUpdate(
       { walletAddress: walletAddress.toLowerCase() },
       update,
-      { new: true }
-    ).select("-nonce -aadhaarHash");
+      { new: true },
+    ).select("-password -nonce -aadhaarHash");
 
     if (!user) {
       return res.status(404).json({
@@ -198,33 +199,39 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
  *     summary: Update user role
  *     tags: [Admin]
  */
-router.put("/users/:walletAddress/role", authorize("admin"), async (req, res, next) => {
-  try {
-    const { walletAddress } = req.params;
-    const { role } = req.body;
+router.put(
+  "/users/:walletAddress/role",
+  authorize("admin"),
+  async (req, res, next) => {
+    try {
+      const { walletAddress } = req.params;
+      const { role } = req.body;
 
-    if (!["user", "verifier", "registrar", "admin", "bank"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role",
-      });
+      if (!["user", "verifier", "registrar", "admin", "bank"].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role",
+        });
+      }
+
+      const user = await User.findOneAndUpdate(
+        { walletAddress: walletAddress.toLowerCase() },
+        { role },
+        { new: true },
+      ).select("-password -nonce -aadhaarHash");
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      res.json({ success: true, data: user });
+    } catch (error) {
+      next(error);
     }
-
-    const user = await User.findOneAndUpdate(
-      { walletAddress: walletAddress.toLowerCase() },
-      { role },
-      { new: true }
-    ).select("-nonce -aadhaarHash");
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    res.json({ success: true, data: user });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // ============================================================
 // Property Management
@@ -239,8 +246,9 @@ router.put("/users/:walletAddress/role", authorize("admin"), async (req, res, ne
  */
 router.get("/properties/pending", async (req, res, next) => {
   try {
-    const properties = await Property.find({ status: "pending" })
-      .sort({ createdAt: 1 });
+    const properties = await Property.find({ status: "pending" }).sort({
+      createdAt: 1,
+    });
 
     res.json({
       success: true,
@@ -263,16 +271,73 @@ router.put("/properties/:propertyId/verify", async (req, res, next) => {
     const { propertyId } = req.params;
     const { approved, reason } = req.body;
 
-    const update = {
-      status: approved ? "verified" : "disputed",
-      verifiedBy: req.walletAddress,
-      verifiedAt: new Date(),
-    };
+    if (typeof approved !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "'approved' must be a boolean",
+      });
+    }
 
+    if (!approved && !reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Reason is required when rejecting a property",
+      });
+    }
+
+    if (approved && !["admin", "verifier"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin or verifier can approve properties",
+      });
+    }
+
+    if (!approved && !["admin", "registrar"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin or registrar can dispute properties",
+      });
+    }
+
+    const propertyIdNumber = parseInt(propertyId, 10);
+    if (Number.isNaN(propertyIdNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid propertyId",
+      });
+    }
+    const existingProperty = await Property.findOne({
+      propertyId: propertyIdNumber,
+    });
+
+    if (!existingProperty) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found",
+      });
+    }
+
+    let tx;
+    if (approved) {
+      tx = await blockchainService.verifyPropertyOnChain(propertyIdNumber);
+    } else {
+      tx = await blockchainService.disputePropertyOnChain(
+        propertyIdNumber,
+        reason,
+      );
+    }
+
+    const blockchainProperty =
+      await blockchainService.getProperty(propertyIdNumber);
     const property = await Property.findOneAndUpdate(
-      { propertyId: parseInt(propertyId) },
-      update,
-      { new: true }
+      { propertyId: propertyIdNumber },
+      {
+        status: blockchainProperty.status,
+        verifiedBy: req.walletAddress,
+        verifiedAt: new Date(),
+        blockchainTxHash: tx.hash,
+      },
+      { new: true },
     );
 
     if (!property) {
@@ -285,7 +350,10 @@ router.put("/properties/:propertyId/verify", async (req, res, next) => {
     res.json({
       success: true,
       message: approved ? "Property verified" : "Property rejected",
-      data: property,
+      data: {
+        property,
+        transactionHash: tx.hash,
+      },
     });
   } catch (error) {
     next(error);
@@ -305,8 +373,9 @@ router.put("/properties/:propertyId/verify", async (req, res, next) => {
  */
 router.get("/documents/pending", async (req, res, next) => {
   try {
-    const documents = await Document.find({ status: "pending" })
-      .sort({ createdAt: 1 });
+    const documents = await Document.find({ status: "pending" }).sort({
+      createdAt: 1,
+    });
 
     res.json({
       success: true,
@@ -345,11 +414,9 @@ router.put("/documents/:hash/verify", async (req, res, next) => {
       update.ipfsHash = hash;
     }
 
-    const doc = await Document.findOneAndUpdate(
-      { hash },
-      update,
-      { new: true }
-    );
+    const doc = await Document.findOneAndUpdate({ hash }, update, {
+      new: true,
+    });
 
     if (!doc) {
       return res.status(404).json({
