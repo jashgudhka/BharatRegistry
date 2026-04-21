@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./LandRegistry.sol";
 import "./interfaces/ITransfer.sol";
+import "./interfaces/IMortgageRegistry.sol";
+import "./interfaces/IDisputeResolution.sol";
 
 /**
  * @title Transfer
@@ -21,6 +23,8 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
 
     // ============ State Variables ============
     LandRegistry public immutable registry;
+    IMortgageRegistry public mortgageRegistry;
+    IDisputeResolution public disputeResolution;
     
     mapping(uint256 => TransferRequest) private _transfers;
     mapping(uint256 => uint256[]) private _propertyTransfers;
@@ -29,6 +33,8 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
     uint256 private _transferIdCounter;
     uint256 public platformFeePercent = 1; // 1% platform fee
     address public feeCollector;
+
+    event ComplianceModulesUpdated(address indexed mortgageRegistry, address indexed disputeResolution);
 
     // ============ Constructor ============
     constructor(address _registryAddress) {
@@ -73,6 +79,8 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
         nonReentrant 
         returns (uint256) 
     {
+        _assertPropertyTransferable(_propertyId);
+
         ILandRegistry.Property memory property = registry.getProperty(_propertyId);
         
         require(property.currentOwner != msg.sender, "Transfer: Cannot buy own property");
@@ -170,6 +178,9 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
             "Transfer: Seller approval required first"
         );
 
+        _assertPropertyTransferable(transfer.propertyId);
+        _assertTransferNotBlocked(_transferId);
+
         transfer.status = TransferStatus.ApprovedByRegistrar;
 
         emit TransferApprovedByRegistrar(_transferId, msg.sender);
@@ -198,6 +209,9 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
             hasRole(REGISTRAR_ROLE, msg.sender),
             "Transfer: Not authorized"
         );
+
+        _assertPropertyTransferable(transfer.propertyId);
+        _assertTransferNotBlocked(_transferId);
 
         // Calculate platform fee
         uint256 platformFee = (transfer.escrowAmount * platformFeePercent) / 100;
@@ -359,6 +373,21 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
+     * @notice Configure optional compliance modules.
+     * @param _mortgageRegistry Mortgage/lien registry module.
+     * @param _disputeResolution Dispute resolution module.
+     */
+    function setComplianceModules(address _mortgageRegistry, address _disputeResolution)
+        external
+        onlyRole(ADMIN_ROLE)
+    {
+        mortgageRegistry = IMortgageRegistry(_mortgageRegistry);
+        disputeResolution = IDisputeResolution(_disputeResolution);
+
+        emit ComplianceModulesUpdated(_mortgageRegistry, _disputeResolution);
+    }
+
+    /**
      * @notice Set the fee collector address
      * @param _feeCollector New fee collector address
      */
@@ -395,6 +424,33 @@ contract Transfer is ITransfer, AccessControl, ReentrancyGuard, Pausable {
      */
     function removeRegistrar(address _account) external onlyRole(ADMIN_ROLE) {
         revokeRole(REGISTRAR_ROLE, _account);
+    }
+
+    // ============ Internal Compliance Checks ============
+
+    function _assertPropertyTransferable(uint256 _propertyId) internal view {
+        if (address(mortgageRegistry) != address(0)) {
+            require(
+                !mortgageRegistry.hasActiveEncumbrance(_propertyId),
+                "Transfer: Property has active encumbrance"
+            );
+        }
+
+        if (address(disputeResolution) != address(0)) {
+            require(
+                !disputeResolution.isPropertyBlocked(_propertyId),
+                "Transfer: Property blocked by dispute"
+            );
+        }
+    }
+
+    function _assertTransferNotBlocked(uint256 _transferId) internal view {
+        if (address(disputeResolution) != address(0)) {
+            require(
+                !disputeResolution.isTransferBlocked(_transferId),
+                "Transfer: Transfer blocked by dispute"
+            );
+        }
     }
 
     // ============ Receive Function ============

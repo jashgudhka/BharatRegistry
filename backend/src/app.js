@@ -16,6 +16,7 @@ const userRoutes = require("./routes/user");
 const documentRoutes = require("./routes/document");
 const adminRoutes = require("./routes/admin");
 const bankRoutes = require("./routes/bank");
+const ecosystemRoutes = require("./routes/ecosystem");
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bank", bankRoutes);
+app.use("/api/ecosystem", ecosystemRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

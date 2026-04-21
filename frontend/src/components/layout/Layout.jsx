@@ -24,10 +24,20 @@ import { useAuth } from "../../hooks/useAuth";
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isConnected } = useAccount();
-  const { user, isAuthenticated, isAdmin, isVerifier, isBank, isRegistered, isLoading, login } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isAdmin,
+    isVerifier,
+    isBank,
+    isRegistered,
+    isLoading,
+    login,
+  } = useAuth();
   const location = useLocation();
 
-  const isActive = (href) => location.pathname === href || location.pathname.startsWith(href + "/");
+  const isActive = (href) =>
+    location.pathname === href || location.pathname.startsWith(href + "/");
 
   const publicNav = [
     { name: "Home", href: "/", icon: Home, exact: true },
@@ -39,15 +49,12 @@ export default function Layout({ children }) {
   const userNav = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Register Property", href: "/register-property", icon: Plus },
+    { name: "Ecosystem", href: "/ecosystem", icon: Layers },
   ];
 
-  const adminNav = [
-    { name: "Admin Panel", href: "/admin", icon: Shield },
-  ];
+  const adminNav = [{ name: "Admin Panel", href: "/admin", icon: Shield }];
 
-  const bankNav = [
-    { name: "Bank Portal", href: "/bank", icon: Landmark },
-  ];
+  const bankNav = [{ name: "Bank Portal", href: "/bank", icon: Landmark }];
 
   const navLinkClass = (href, exact) =>
     `px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 text-sm ${
@@ -83,38 +90,62 @@ export default function Layout({ children }) {
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
               {publicNav.map((item) => (
-                <Link key={item.name} to={item.href} className={navLinkClass(item.href, item.exact)}>
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={navLinkClass(item.href, item.exact)}
+                >
                   <item.icon size={16} className="stroke-[2.5]" />
                   {item.name}
                 </Link>
               ))}
 
-              {isAuthenticated && userNav.map((item) => (
-                <Link key={item.name} to={item.href} className={navLinkClass(item.href)}>
-                  <item.icon size={16} className="stroke-[2.5]" />
-                  {item.name}
-                </Link>
-              ))}
+              {isAuthenticated &&
+                userNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={navLinkClass(item.href)}
+                  >
+                    <item.icon size={16} className="stroke-[2.5]" />
+                    {item.name}
+                  </Link>
+                ))}
 
-              {isAuthenticated && (isAdmin || isVerifier) && adminNav.map((item) => (
-                <Link key={item.name} to={item.href} className={navLinkClass(item.href)}>
-                  <item.icon size={16} className="stroke-[2.5]" />
-                  {item.name}
-                </Link>
-              ))}
+              {isAuthenticated &&
+                (isAdmin || isVerifier) &&
+                adminNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={navLinkClass(item.href)}
+                  >
+                    <item.icon size={16} className="stroke-[2.5]" />
+                    {item.name}
+                  </Link>
+                ))}
 
-              {isAuthenticated && isBank && bankNav.map((item) => (
-                <Link key={item.name} to={item.href} className={navLinkClass(item.href)}>
-                  <item.icon size={16} className="stroke-[2.5]" />
-                  {item.name}
-                </Link>
-              ))}
+              {isAuthenticated &&
+                isBank &&
+                bankNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={navLinkClass(item.href)}
+                  >
+                    <item.icon size={16} className="stroke-[2.5]" />
+                    {item.name}
+                  </Link>
+                ))}
             </div>
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
               {isConnected && !isAuthenticated && !isRegistered && (
-                <Link to="/register" className="btn btn-primary text-sm py-2 px-4 hidden md:flex">
+                <Link
+                  to="/register"
+                  className="btn btn-primary text-sm py-2 px-4 hidden md:flex"
+                >
                   <UserPlus size={16} /> Register
                 </Link>
               )}
@@ -127,13 +158,17 @@ export default function Layout({ children }) {
                   <LogIn size={16} /> {isLoading ? "Logging in..." : "Login"}
                 </button>
               )}
-              
+
               {isAuthenticated && (
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-xs font-bold text-emerald-700">{user?.fullName?.split(" ")[0] || "User"}</span>
+                  <span className="text-xs font-bold text-emerald-700">
+                    {user?.fullName?.split(" ")[0] || "User"}
+                  </span>
                   {user?.role !== "user" && (
-                    <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">{user?.role}</span>
+                    <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
+                      {user?.role}
+                    </span>
                   )}
                 </div>
               )}
@@ -145,7 +180,11 @@ export default function Layout({ children }) {
                 className="lg:hidden p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
-                {mobileMenuOpen ? <X size={20} className="stroke-[2.5]" /> : <Menu size={20} className="stroke-[2.5]" />}
+                {mobileMenuOpen ? (
+                  <X size={20} className="stroke-[2.5]" />
+                ) : (
+                  <Menu size={20} className="stroke-[2.5]" />
+                )}
               </button>
             </div>
           </div>
@@ -154,7 +193,9 @@ export default function Layout({ children }) {
         {/* Mobile Navigation */}
         <div
           className={`lg:hidden absolute top-full left-4 right-4 mt-2 origin-top transition-all duration-300 ${
-            mobileMenuOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible"
+            mobileMenuOpen
+              ? "opacity-100 scale-100 visible"
+              : "opacity-0 scale-95 invisible"
           }`}
         >
           <div className="glass-panel p-3 space-y-1 shadow-2xl">
@@ -182,28 +223,30 @@ export default function Layout({ children }) {
                     {item.name}
                   </Link>
                 ))}
-                {(isAdmin || isVerifier) && adminNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-amber-700 hover:bg-amber-50 font-semibold transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <item.icon size={20} className="stroke-[2.5]" />
-                    {item.name}
-                  </Link>
-                ))}
-                {isBank && bankNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-indigo-700 hover:bg-indigo-50 font-semibold transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <item.icon size={20} className="stroke-[2.5]" />
-                    {item.name}
-                  </Link>
-                ))}
+                {(isAdmin || isVerifier) &&
+                  adminNav.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-amber-700 hover:bg-amber-50 font-semibold transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <item.icon size={20} className="stroke-[2.5]" />
+                      {item.name}
+                    </Link>
+                  ))}
+                {isBank &&
+                  bankNav.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-indigo-700 hover:bg-indigo-50 font-semibold transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <item.icon size={20} className="stroke-[2.5]" />
+                      {item.name}
+                    </Link>
+                  ))}
               </div>
             )}
             {isConnected && !isAuthenticated && !isRegistered && (
@@ -219,9 +262,12 @@ export default function Layout({ children }) {
               </div>
             )}
             {isConnected && !isAuthenticated && isRegistered && (
-                <div className="pt-2 mt-2 border-t border-slate-200/50">
+              <div className="pt-2 mt-2 border-t border-slate-200/50">
                 <button
-                  onClick={() => { login(); setMobileMenuOpen(false); }}
+                  onClick={() => {
+                    login();
+                    setMobileMenuOpen(false);
+                  }}
                   disabled={isLoading}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors disabled:opacity-50 text-left"
                 >
@@ -273,8 +319,19 @@ export default function Layout({ children }) {
             </div>
 
             <div className="flex gap-6 text-sm font-semibold text-slate-500">
-              <Link to="/verify" className="hover:text-primary-600 transition-colors">Verify Document</Link>
-              <a href="/api-docs" className="hover:text-primary-600 transition-colors" target="_blank">API</a>
+              <Link
+                to="/verify"
+                className="hover:text-primary-600 transition-colors"
+              >
+                Verify Document
+              </Link>
+              <a
+                href="/api-docs"
+                className="hover:text-primary-600 transition-colors"
+                target="_blank"
+              >
+                API
+              </a>
             </div>
           </div>
         </div>

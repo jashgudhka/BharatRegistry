@@ -105,4 +105,54 @@ export const bankAPI = {
     api.get(`/bank/owner-properties/${walletAddress}`),
 };
 
+// Ecosystem modules
+export const ecosystemAPI = {
+  getDocumentAuthenticity: (hash) =>
+    api.get(`/ecosystem/documents/authentic/${hash}`),
+  registerDocumentHash: (payload) =>
+    api.post("/ecosystem/documents/register", payload),
+  verifyDocumentHash: (hash) => api.post(`/ecosystem/documents/${hash}/verify`),
+
+  submitIdentity: (payload) => api.post("/ecosystem/identity/submit", payload),
+  reviewIdentity: (payload) => api.post("/ecosystem/identity/review", payload),
+  grantIdentityRole: (payload) =>
+    api.post("/ecosystem/identity/roles/grant", payload),
+  getIdentity: (walletAddress) =>
+    api.get(`/ecosystem/identity/${walletAddress}`),
+
+  createLien: (payload) => api.post("/ecosystem/mortgages/create", payload),
+  updateLienOutstanding: (lienId, payload) =>
+    api.post(`/ecosystem/mortgages/${lienId}/outstanding`, payload),
+  closeLien: (lienId, payload) =>
+    api.post(`/ecosystem/mortgages/${lienId}/close`, payload),
+  getLien: (lienId) => api.get(`/ecosystem/mortgages/${lienId}`),
+  getPropertyEncumbrance: (propertyId) =>
+    api.get(`/ecosystem/mortgages/property/${propertyId}/encumbrance`),
+
+  openDispute: (payload) => api.post("/ecosystem/disputes/open", payload),
+  moveDisputeToReview: (disputeId) =>
+    api.post(`/ecosystem/disputes/${disputeId}/review`),
+  resolveDispute: (disputeId, payload) =>
+    api.post(`/ecosystem/disputes/${disputeId}/resolve`, payload),
+  rejectDispute: (disputeId, payload) =>
+    api.post(`/ecosystem/disputes/${disputeId}/reject`, payload),
+  appealDispute: (disputeId, payload) =>
+    api.post(`/ecosystem/disputes/${disputeId}/appeal`, payload),
+  getDispute: (disputeId) => api.get(`/ecosystem/disputes/${disputeId}`),
+
+  fundInsuranceReserve: (payload) =>
+    api.post("/ecosystem/insurance/reserve/fund", payload),
+  issuePolicy: (payload) =>
+    api.post("/ecosystem/insurance/policies/issue", payload),
+  payoutPolicyClaim: (policyId, payload) =>
+    api.post(`/ecosystem/insurance/policies/${policyId}/payout`, payload),
+  getPolicy: (policyId) => api.get(`/ecosystem/insurance/policies/${policyId}`),
+
+  tokenizeProperty: (payload) => api.post("/ecosystem/tokenize", payload),
+  getTokenizedProperty: (propertyId) =>
+    api.get(`/ecosystem/token/property/${propertyId}`),
+  getHolderShares: (propertyId, walletAddress) =>
+    api.get(`/ecosystem/token/property/${propertyId}/holder/${walletAddress}`),
+};
+
 export default api;

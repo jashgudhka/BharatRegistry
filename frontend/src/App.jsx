@@ -10,6 +10,7 @@ import TransferDetails from "./pages/TransferDetails";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import DocumentVerify from "./pages/DocumentVerify";
+import EcosystemWorkbench from "./pages/EcosystemWorkbench";
 import NotFound from "./pages/NotFound";
 import AuthRoute from "./components/layout/AuthRoute";
 
@@ -69,6 +70,14 @@ function App() {
           element={
             <AuthRoute>
               <DocumentVerify />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/ecosystem"
+          element={
+            <AuthRoute>
+              <EcosystemWorkbench />
             </AuthRoute>
           }
         />

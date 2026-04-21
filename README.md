@@ -28,6 +28,7 @@
 - [Smart Contract Design](#-smart-contract-design)
 - [Project Structure](#-project-structure)
 - [Installation & Setup](#-installation--setup)
+- [Local Development](#-local-development)
 - [Development Roadmap](#-development-roadmap)
 - [Usage Guide](#-usage-guide)
 - [Testing](#-testing)
@@ -35,6 +36,50 @@
 - [Contributing](#-contributing)
 - [References](#-references)
 - [License](#-license)
+
+---
+
+## 🚀 Local Development
+
+If you do not have Hyperledger Besu installed, you can still run the project locally using Hardhat.
+
+1. Install dependencies:
+
+```powershell
+npm run install:all
+```
+
+2. Start the local Hardhat blockchain:
+
+```powershell
+npm run hardhat:node
+```
+
+3. Deploy contracts to the local Hardhat network:
+
+```powershell
+npm run deploy:hardhat
+```
+
+4. Start the backend API:
+
+```powershell
+npm run backend
+```
+
+5. Start the frontend:
+
+```powershell
+npm run frontend
+```
+
+6. Open the UI:
+
+```text
+http://localhost:5173
+```
+
+This workflow does not require Besu or the Besu network scripts.
 
 ---
 
