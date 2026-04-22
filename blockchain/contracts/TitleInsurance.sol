@@ -139,6 +139,10 @@ contract TitleInsurance is AccessControl, Pausable {
         Policy storage policy = _policies[policyId];
         require(policy.status == PolicyStatus.Active, "TitleInsurance: policy not active");
         require(
+            hasRole(ADMIN_ROLE, msg.sender) || hasRole(INSURER_ROLE, msg.sender) || hasRole(CLAIMS_ROLE, msg.sender),
+            "TitleInsurance: not authorized"
+        );
+        require(
             block.timestamp >= policy.expiryAt || hasRole(ADMIN_ROLE, msg.sender),
             "TitleInsurance: policy not expired"
         );

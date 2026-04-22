@@ -234,8 +234,8 @@ contract DisputeResolution is AccessControl, Pausable {
     {
         DisputeCase storage dispute = _disputes[disputeId];
         require(
-            msg.sender == dispute.claimant || msg.sender == dispute.respondent,
-            "DisputeResolution: not a dispute party"
+            (msg.sender == dispute.claimant || msg.sender == dispute.respondent) || hasRole(VERIFIER_ROLE, msg.sender),
+            "DisputeResolution: not authorized"
         );
         require(
             dispute.status == DisputeStatus.Resolved || dispute.status == DisputeStatus.Rejected,

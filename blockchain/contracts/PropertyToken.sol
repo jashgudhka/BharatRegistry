@@ -95,6 +95,10 @@ contract PropertyToken is ERC1155, AccessControl, Pausable {
 
         TokenizedProperty storage tokenized = _tokenizedProperties[propertyId];
         require(tokenized.active, "PropertyToken: not active");
+        require(
+            msg.sender == tokenized.originalOwner || hasRole(ADMIN_ROLE, msg.sender),
+            "PropertyToken: not authorized"
+        );
 
         _burn(msg.sender, propertyId, amount);
         tokenized.totalShares -= amount;
