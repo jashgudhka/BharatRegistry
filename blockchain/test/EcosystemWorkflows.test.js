@@ -293,4 +293,105 @@ describe("Ecosystem Workflows", function () {
       2500,
     );
   });
+
+  it("allows fractional sale listings and lease rent payments", async function () {
+    const { propertyToken, seller, buyer } = await loadFixture(
+      deployEcosystemFixture,
+    );
+
+    await propertyToken
+      .connect(seller)
+      .tokenizeProperty(2, 1000, "ipfs://dummy-token-002");
+
+    const propertyTokenAddress = await propertyToken.getAddress();
+    await propertyToken
+      .connect(seller)
+      .setApprovalForAll(propertyTokenAddress, true);
+
+    await propertyToken
+      .connect(seller)
+      .createSaleListing(2, 250, ethers.parseEther("0.01"));
+
+    const listings = await propertyToken.getPropertySaleListings(2);
+    const listingId = listings[0].listingId;
+
+    await expect(
+      propertyToken.connect(buyer).purchaseFraction(listingId, {
+        value: ethers.parseEther("2.5"),
+      }),
+    ).to.changeEtherBalances(
+      [buyer, seller],
+      [ethers.parseEther("-2.5"), ethers.parseEther("2.5")],
+    );
+
+    expect(await propertyToken.balanceShares(2, buyer.address)).to.equal(250);
+
+    const block = await ethers.provider.getBlock("latest");
+    const now = block.timestamp;
+    await propertyToken
+      .connect(seller)
+      .createLease(
+        2,
+        buyer.address,
+        100,
+        ethers.parseEther("0.001"),
+        now - 10,
+        now + 86400,
+        false,
+        "ipfs://fraction-lease-001",
+      );
+
+    const leaseIds = await propertyToken.getPropertyLeases(2);
+    const leaseId = leaseIds[0].leaseId;
+
+    await expect(
+      propertyToken.connect(buyer).payRent(leaseId, {
+        value: ethers.parseEther("0.1"),
+      }),
+    ).to.changeEtherBalances(
+      [buyer, seller],
+      [ethers.parseEther("-0.1"), ethers.parseEther("0.1")],
+    );
+  });
+
+  it("supports full-property rent distribution for full leases", async function () {
+    const { propertyToken, seller, buyer } = await loadFixture(
+      deployEcosystemFixture,
+    );
+
+    await propertyToken
+      .connect(seller)
+      .tokenizeProperty(1, 1000, "ipfs://dummy-token-001");
+
+    const propertyTokenAddress = await propertyToken.getAddress();
+    await propertyToken
+      .connect(seller)
+      .setApprovalForAll(propertyTokenAddress, true);
+
+    const block = await ethers.provider.getBlock("latest");
+    const now = block.timestamp;
+    await propertyToken
+      .connect(seller)
+      .createLease(
+        1,
+        buyer.address,
+        1000,
+        ethers.parseEther("0.001"),
+        now - 10,
+        now + 86400,
+        true,
+        "ipfs://full-property-lease-001",
+      );
+
+    const leaseIds = await propertyToken.getPropertyLeases(1);
+    const leaseId = leaseIds[0].leaseId;
+
+    await propertyToken.connect(buyer).payRent(leaseId, {
+      value: ethers.parseEther("1"),
+    });
+
+    await expect(() =>
+      propertyToken.connect(seller).claimRent(leaseId),
+    ).to.changeEtherBalance(seller, ethers.parseEther("1"));
+  });
 });
