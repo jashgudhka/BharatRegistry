@@ -43,8 +43,8 @@ function validatePAN(pan) {
 function validateAadhaar(aadhaar) {
   if (!aadhaar) return { valid: false, error: "Aadhaar number is required" };
   const cleaned = aadhaar.replace(/\s/g, "");
-  if (!/^\d{12}$/.test(cleaned)) {
-    return { valid: false, error: "Aadhaar number must be exactly 12 digits" };
+  if (!/^\d{16}$/.test(cleaned)) {
+    return { valid: false, error: "Aadhaar number must be exactly 16 digits" };
   }
   if (cleaned[0] === "0" || cleaned[0] === "1") {
     return { valid: false, error: "Aadhaar number cannot start with 0 or 1" };
@@ -355,7 +355,7 @@ export default function Register() {
                   value={formData.aadhaarNumber}
                   onChange={(e) => {
                     let val = e.target.value.replace(/\D/g, "");
-                    if (val.length > 12) val = val.slice(0, 12);
+                    if (val.length > 16) val = val.slice(0, 16);
                     const formatted = val.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
                     handleChange("aadhaarNumber", formatted);
                   }}

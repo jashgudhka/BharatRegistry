@@ -30,6 +30,8 @@ export default function Layout({ children }) {
     isAdmin,
     isVerifier,
     isBank,
+    isRegistrar,
+    isSuperAdmin,
     isRegistered,
     isLoading,
     login,
@@ -52,7 +54,17 @@ export default function Layout({ children }) {
     { name: "Ecosystem", href: "/ecosystem", icon: Layers },
   ];
 
-  const adminNav = [{ name: "Admin Panel", href: "/admin", icon: Shield }];
+  const adminNav = [
+    { name: "Admin Dashboard", href: "/admin", icon: Shield },
+    { name: "KYC Center", href: "/admin/users", icon: Users },
+  ];
+
+  const registrarNav = [
+    { name: "Final Registrar", href: "/admin/properties", icon: Building2 },
+    { name: "Document Registry", href: "/admin/documents", icon: FileText },
+  ];
+
+  const superAdminNav = [{ name: "Super Admin", href: "/super-admin", icon: Shield }];
 
   const bankNav = [{ name: "Bank Portal", href: "/bank", icon: Landmark }];
 
@@ -126,8 +138,34 @@ export default function Layout({ children }) {
                 ))}
 
               {isAuthenticated &&
+                (isAdmin || isRegistrar) &&
+                registrarNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={navLinkClass(item.href)}
+                  >
+                    <item.icon size={16} className="stroke-[2.5]" />
+                    {item.name}
+                  </Link>
+                ))}
+
+              {isAuthenticated &&
                 isBank &&
                 bankNav.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={navLinkClass(item.href)}
+                  >
+                    <item.icon size={16} className="stroke-[2.5]" />
+                    {item.name}
+                  </Link>
+                ))}
+
+              {isAuthenticated &&
+                isSuperAdmin &&
+                superAdminNav.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
@@ -235,12 +273,36 @@ export default function Layout({ children }) {
                       {item.name}
                     </Link>
                   ))}
+                {(isAdmin || isRegistrar) &&
+                  registrarNav.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-700 hover:bg-blue-50 font-semibold transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <item.icon size={20} className="stroke-[2.5]" />
+                      {item.name}
+                    </Link>
+                  ))}
                 {isBank &&
                   bankNav.map((item) => (
                     <Link
                       key={item.name}
                       to={item.href}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-indigo-700 hover:bg-indigo-50 font-semibold transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <item.icon size={20} className="stroke-[2.5]" />
+                      {item.name}
+                    </Link>
+                  ))}
+                {isSuperAdmin &&
+                  superAdminNav.map((item) => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-700 hover:bg-red-50 font-semibold transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <item.icon size={20} className="stroke-[2.5]" />

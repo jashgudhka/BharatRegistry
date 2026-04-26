@@ -1,12 +1,14 @@
 import { useParams, Link } from 'react-router-dom'
 import { useAccount } from 'wagmi'
-import { ArrowLeft, MapPin, Maximize, Tag, User, Calendar, FileText, ExternalLink, Send, Shield, Activity, Share2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, MapPin, Maximize, Tag, User, Calendar, FileText, ExternalLink, Send, Shield, Activity, Share2, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { useProperty, useIsPropertyVerified } from '../hooks/useContract'
 import { usePropertyTransfers } from '../hooks/useTransfer'
 import { useAuth } from '../hooks/useAuth'
 import { PROPERTY_STATUS_LABELS } from '../utils/constants'
 import InitiateTransferModal from '../components/transfer/InitiateTransferModal'
 import { useState } from 'react'
+import { adminAPI } from '../utils/api'
+import toast from 'react-hot-toast'
 
 export default function PropertyDetails() {
   const { propertyId } = useParams()
@@ -57,8 +59,31 @@ export default function PropertyDetails() {
     )
   }
 
-  const isOwner = isConnected && hasWallet && address?.toLowerCase() === property.currentOwner.toLowerCase()
-  const canBuy = isConnected && hasWallet && !isOwner && property.status === 'verified'
+  const { isOwner, isAdmin, isVerifier, isRegistrar, isSuperAdmin } = useAuth()
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const handleVerify = async (approved) => {
+    setActionLoading(true)
+    try {
+      const reason = approved ? undefined : prompt("Reason for rejection:")
+      if (!approved && !reason) return
+      
+      await adminAPI.verifyProperty(propertyId, approved, reason)
+      toast.success(approved ? "Property verified!" : "Property rejected")
+      // Refresh logic would go here, usually reloading the page or re-fetching property
+      window.location.reload()
+    } catch (err) {
+      toast.error("Failed to update property status")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const canVerify = (isVerifier || isAdmin || isSuperAdmin) && property.status === 'pending'
+  const canRegister = (isRegistrar || isAdmin || isSuperAdmin) && property.status === 'pending'
+  
+  const isPropertyOwner = isConnected && hasWallet && address?.toLowerCase() === property.currentOwner.toLowerCase()
+  const canBuy = isConnected && hasWallet && !isPropertyOwner && property.status === 'verified' && user?.isVerified
 
   const statusColors = {
     pending: 'badge-pending',
@@ -68,7 +93,7 @@ export default function PropertyDetails() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto animate-fade-in pb-12 w-full">
+    <div className="space-y-8 max-w-6xl mx-auto animate-fade-in pb-12 w-full px-4">
       {/* Back Button */}
       <Link to="/properties" className="inline-flex items-center gap-2 text-slate-500 font-bold hover:text-primary-600 transition-colors uppercase tracking-wider text-sm bg-white/50 px-4 py-2 rounded-xl backdrop-blur-md shadow-sm border border-white">
         <ArrowLeft size={16} className="stroke-[3]" />
@@ -95,10 +120,43 @@ export default function PropertyDetails() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-wrap items-center gap-4 shrink-0">
              <button className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-slate-400 hover:text-primary-500 hover:-translate-y-1 transition-all">
                 <Share2 className="w-5 h-5" />
              </button>
+            
+            {(canVerify || canRegister) && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleVerify(true)}
+                  disabled={actionLoading}
+                  className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-none px-6"
+                >
+                  {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                  Approve Asset
+                </button>
+                <button
+                  onClick={() => handleVerify(false)}
+                  disabled={actionLoading}
+                  className="btn bg-rose-50 text-rose-600 hover:bg-rose-100 border-rose-200 px-6 font-bold"
+                >
+                  <XCircle size={18} /> Dispute
+                </button>
+              </div>
+            )}
+
+            {isBank && (
+              <button
+                onClick={() => toast.success("Mortgage process initiated for internal bank review.")}
+                className="btn bg-indigo-600 text-white hover:bg-indigo-700 border-none px-6"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield size={18} />
+                  <span className="font-bold">Initiate Mortgage Lien</span>
+                </div>
+              </button>
+            )}
+
             {canBuy && (
               <button
                 onClick={() => setShowTransferModal(true)}
@@ -269,7 +327,7 @@ export default function PropertyDetails() {
                   <User className="text-indigo-500 w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  {isOwner && (
+                  {isPropertyOwner && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full mb-1">
                       Current Account
                     </span>
@@ -287,7 +345,7 @@ export default function PropertyDetails() {
           </div>
 
           {/* Quick Actions Panel */}
-          {isOwner && (
+          {isPropertyOwner && (
             <div className="glass-panel p-6 border border-white/80">
               <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800 mb-5">Administrative Actions</h2>
               <div className="space-y-3">

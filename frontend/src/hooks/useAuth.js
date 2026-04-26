@@ -141,7 +141,8 @@ export function useAuth() {
     refreshUser,
     isAdmin: user?.role === "admin",
     isVerifier: user?.role === "verifier" || user?.role === "admin",
-    isRegistrar: user?.role === "registrar" || user?.role === "admin",
-    isBank: user?.role === "bank",
+    isRegistrar: user?.role === "registrar" || user?.role === "admin" || user?.role === "super_admin",
+    isBank: user?.role === "bank" || user?.role === "super_admin",
+    isSuperAdmin: user?.role === "super_admin",
   };
 }

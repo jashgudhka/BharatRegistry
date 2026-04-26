@@ -186,7 +186,7 @@ export default function Properties() {
           <p className="text-slate-500 font-medium mb-8">
             Be the pioneer! Register the very first property on the decentralized registry block.
           </p>
-          <Link to="/register" className="btn btn-primary px-8">
+          <Link to="/register-property" className="btn btn-primary px-8">
             Register Property
           </Link>
         </div>

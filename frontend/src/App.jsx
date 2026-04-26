@@ -16,6 +16,7 @@ import AuthRoute from "./components/layout/AuthRoute";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminProperties from "./pages/admin/AdminProperties";
 import AdminDocuments from "./pages/admin/AdminDocuments";
@@ -103,15 +104,23 @@ function App() {
         <Route
           path="/admin"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
               <AdminDashboard />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/super-admin"
+          element={
+            <AuthRoute allowedRoles={["super_admin"]}>
+              <SuperAdminDashboard />
             </AuthRoute>
           }
         />
         <Route
           path="/admin/users"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
               <AdminUsers />
             </AuthRoute>
           }
@@ -119,7 +128,7 @@ function App() {
         <Route
           path="/admin/properties"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
               <AdminProperties />
             </AuthRoute>
           }
@@ -127,7 +136,7 @@ function App() {
         <Route
           path="/admin/documents"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
               <AdminDocuments />
             </AuthRoute>
           }

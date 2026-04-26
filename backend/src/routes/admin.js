@@ -7,9 +7,9 @@ const Transaction = require("../models/Transaction");
 const { auth, authorize } = require("../middleware/auth");
 const blockchainService = require("../services/blockchainService");
 
-// All admin routes require admin or verifier role
+// All admin routes require super_admin, admin, verifier, or registrar role
 router.use(auth);
-router.use(authorize("admin", "verifier", "registrar"));
+router.use(authorize("super_admin", "admin", "verifier", "registrar"));
 
 /**
  * @swagger
@@ -201,7 +201,7 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
  */
 router.put(
   "/users/:walletAddress/role",
-  authorize("admin"),
+  authorize("super_admin"),
   async (req, res, next) => {
     try {
       const { walletAddress } = req.params;

@@ -75,11 +75,11 @@ function validateAadhaar(aadhaar) {
   // Remove spaces
   const cleaned = aadhaar.replace(/\s/g, "");
 
-  // Must be exactly 12 digits
-  if (!/^\d{12}$/.test(cleaned)) {
+  // Must be exactly 16 digits
+  if (!/^\d{16}$/.test(cleaned)) {
     return {
       valid: false,
-      error: "Aadhaar number must be exactly 12 digits",
+      error: "Aadhaar number must be exactly 16 digits",
     };
   }
 

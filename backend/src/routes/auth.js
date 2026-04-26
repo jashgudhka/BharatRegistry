@@ -231,6 +231,15 @@ router.post("/register", async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    let role = "user";
+    let isVerified = false;
+
+    // Secure Bootstrap: Only the exact email matching the env var becomes Super Admin
+    if (process.env.SUPER_ADMIN_EMAIL && normalizedEmail === process.env.SUPER_ADMIN_EMAIL.toLowerCase()) {
+      role = "super_admin";
+      isVerified = true;
+    }
+
     const userData = {
       email: normalizedEmail,
       password: hashedPassword,
@@ -244,7 +253,10 @@ router.post("/register", async (req, res, next) => {
       panNumber: panNumber.toUpperCase(),
       panType: panResult.type,
       aadhaarHash: aadhaarHashed,
+      role,
+      isVerified,
       registrationComplete: true,
+      ...(isVerified && { verifiedAt: new Date(), verifiedBy: "system_bootstrap" })
     };
 
     const user = await User.create(userData);

@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Loader2, Search, User, Shield } from "lucide-react";
 import { adminAPI } from "../../utils/api";
 import toast from "react-hot-toast";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function AdminUsers() {
+  const { isSuperAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -124,17 +126,24 @@ export default function AdminUsers() {
                     {user.isVerified ? "Verified" : "Pending KYC"}
                   </span>
 
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.walletAddress, e.target.value)}
-                    className="text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
-                  >
-                    <option value="user">User</option>
-                    <option value="verifier">Verifier</option>
-                    <option value="registrar">Registrar</option>
-                    <option value="admin">Admin</option>
-                    <option value="bank">Bank</option>
-                  </select>
+                  {isSuperAdmin ? (
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user.walletAddress, e.target.value)}
+                      className="text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
+                    >
+                      <option value="user">User</option>
+                      <option value="verifier">Verifier</option>
+                      <option value="registrar">Registrar</option>
+                      <option value="admin">Admin</option>
+                      <option value="bank">Bank</option>
+                      <option value="super_admin">Super Admin</option>
+                    </select>
+                  ) : (
+                    <span className="text-xs font-bold bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200 uppercase tracking-widest text-slate-600">
+                      {user.role}
+                    </span>
+                  )}
 
                   {!user.isVerified && (
                     <div className="flex gap-2">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import { useAccount } from "wagmi";
 import {
   FileText,
@@ -10,7 +11,9 @@ import {
   ArrowRight,
   CheckCircle,
   Home,
-  ShieldCheck
+  ShieldCheck,
+  Loader2,
+  ShieldAlert
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { decodeEventLog } from "viem";
@@ -22,11 +25,48 @@ import { PROPERTY_TYPES, INDIAN_STATES } from "../utils/constants";
 export default function RegisterProperty() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
-  const { hasWallet } = useAuth();
+  const { hasWallet, user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { registerProperty, isLoading, isSuccess, hash, error, receipt } =
     useRegisterProperty();
 
   const [hasSynced, setHasSynced] = useState(false);
+
+  if (!authLoading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 text-primary-500 animate-spin mb-4" />
+        <p className="text-slate-500 font-bold">Verifying authorization...</p>
+      </div>
+    );
+  }
+
+  if (user && !user.isVerified) {
+    return (
+      <div className="max-w-2xl mx-auto mt-12 animate-fade-in relative z-10 w-full px-4">
+        <div className="glass-panel p-12 text-center border-t-8 border-t-amber-500 shadow-2xl">
+          <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 border border-amber-100">
+            <ShieldAlert size={48} className="text-amber-500" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">Identity Required</h1>
+          <p className="text-slate-600 text-lg font-medium mb-10 leading-relaxed max-w-lg mx-auto">
+            You must complete your KYC verification before registering high-value assets on the Bharat Registry blockchain. This ensures sovereign compliance and legal security.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/dashboard" className="btn btn-secondary px-8 font-bold">
+              Return to Dashboard
+            </Link>
+            <div className="bg-amber-100 text-amber-700 px-8 py-3 rounded-xl font-bold border border-amber-200">
+               Verification Pending
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState({
     surveyNumber: "",
