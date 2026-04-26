@@ -1,0 +1,68 @@
+export const TITLE_INSURANCE_ABI = [
+  {
+    inputs: [],
+    name: "fundReserve",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "propertyId", type: "uint256" },
+      { internalType: "address", name: "policyHolder", type: "address" },
+      { internalType: "uint256", name: "premium", type: "uint256" },
+      { internalType: "uint256", name: "coverageAmount", type: "uint256" },
+      { internalType: "uint64", name: "expiryAt", type: "uint64" },
+      { internalType: "string", name: "policyURI", type: "string" },
+    ],
+    name: "issuePolicy",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "policyId", type: "uint256" },
+      { internalType: "uint256", name: "disputeId", type: "uint256" },
+    ],
+    name: "payoutFromDispute",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "policyId", type: "uint256" }],
+    name: "getPolicy",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "policyId", type: "uint256" },
+          { internalType: "uint256", name: "propertyId", type: "uint256" },
+          { internalType: "address", name: "policyHolder", type: "address" },
+          { internalType: "address", name: "insurer", type: "address" },
+          { internalType: "uint256", name: "premium", type: "uint256" },
+          { internalType: "uint256", name: "coverageAmount", type: "uint256" },
+          { internalType: "uint256", name: "lockedCoverage", type: "uint256" },
+          { internalType: "uint64", name: "issuedAt", type: "uint64" },
+          { internalType: "uint64", name: "expiryAt", type: "uint64" },
+          { internalType: "uint8", name: "status", type: "uint8" },
+          { internalType: "uint64", name: "claimProcessedAt", type: "uint64" },
+          { internalType: "uint256", name: "linkedDisputeId", type: "uint256" },
+          { internalType: "string", name: "policyURI", type: "string" },
+        ],
+        internalType: "struct TitleInsurance.Policy",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "reservePool",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+];

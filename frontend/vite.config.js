@@ -18,4 +18,12 @@ export default defineConfig({
       "@": "/src",
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.message.includes("contains an annotation that Rollup cannot interpret")) return;
+        warn(warning);
+      }
+    }
+  }
 });

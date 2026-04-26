@@ -5,6 +5,24 @@ export const LAND_REGISTRY_ADDRESS =
 export const TRANSFER_ADDRESS =
   import.meta.env.VITE_TRANSFER_ADDRESS ||
   "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+export const DOCUMENT_REGISTRY_ADDRESS =
+  import.meta.env.VITE_DOCUMENT_REGISTRY_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
+export const IDENTITY_REGISTRY_ADDRESS =
+  import.meta.env.VITE_IDENTITY_REGISTRY_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
+export const MORTGAGE_REGISTRY_ADDRESS =
+  import.meta.env.VITE_MORTGAGE_REGISTRY_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
+export const DISPUTE_RESOLUTION_ADDRESS =
+  import.meta.env.VITE_DISPUTE_RESOLUTION_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
+export const TITLE_INSURANCE_ADDRESS =
+  import.meta.env.VITE_TITLE_INSURANCE_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
+export const PROPERTY_TOKEN_ADDRESS =
+  import.meta.env.VITE_PROPERTY_TOKEN_ADDRESS ||
+  "0x0000000000000000000000000000000000000000";
 
 // API URL
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -26,23 +44,40 @@ export const PROPERTY_STATUS_LABELS = {
 
 // Transfer status mapping
 export const TRANSFER_STATUS = {
-  0: "pending",
-  1: "deposited",
-  2: "seller_approved",
-  3: "government_approved",
+  0: "initiated",
+  1: "escrow_funded",
+  2: "approved_by_seller",
+  3: "approved_by_registrar",
   4: "completed",
   5: "cancelled",
   6: "disputed",
 };
 
+export const LEGACY_TRANSFER_STATUS_ALIASES = {
+  pending: "initiated",
+  deposited: "escrow_funded",
+  seller_approved: "approved_by_seller",
+  government_approved: "approved_by_registrar",
+};
+
+export const normalizeTransferStatus = (status) => {
+  return LEGACY_TRANSFER_STATUS_ALIASES[status] || status;
+};
+
 export const TRANSFER_STATUS_LABELS = {
-  pending: "Pending",
-  deposited: "Escrow Deposited",
-  seller_approved: "Seller Approved",
-  government_approved: "Govt Approved",
+  initiated: "Initiated",
+  escrow_funded: "Escrow Funded",
+  approved_by_seller: "Seller Approved",
+  approved_by_registrar: "Registrar Approved",
   completed: "Completed",
   cancelled: "Cancelled",
   disputed: "Disputed",
+
+  // Backward compatibility for already persisted legacy values.
+  pending: "Initiated",
+  deposited: "Escrow Funded",
+  seller_approved: "Seller Approved",
+  government_approved: "Registrar Approved",
 };
 
 // Helper functions
@@ -50,7 +85,7 @@ export const getStatusFromNumber = (statusNum, type = "property") => {
   if (type === "property") {
     return PROPERTY_STATUS[statusNum] || "pending";
   } else {
-    return TRANSFER_STATUS[statusNum] || "pending";
+    return TRANSFER_STATUS[statusNum] || "initiated";
   }
 };
 

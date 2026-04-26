@@ -4,6 +4,13 @@ const User = require("../models/User");
 const { auth, authorize } = require("../middleware/auth");
 const { validatePagination } = require("../middleware/validation");
 
+const PRIVILEGED_PROFILE_ROLES = new Set([
+  "admin",
+  "verifier",
+  "registrar",
+  "bank",
+]);
+
 /**
  * @swagger
  * /api/users:
@@ -31,7 +38,7 @@ router.get(
 
       const [users, total] = await Promise.all([
         User.find(filter)
-          .select("-nonce -aadhaarHash")
+          .select("-password -nonce -aadhaarHash")
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
@@ -53,39 +60,8 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
-
-/**
- * @swagger
- * /api/users/{walletAddress}:
- *   get:
- *     summary: Get user by wallet address
- *     tags: [Users]
- */
-router.get("/:walletAddress", async (req, res, next) => {
-  try {
-    const { walletAddress } = req.params;
-
-    const user = await User.findOne({
-      walletAddress: walletAddress.toLowerCase(),
-    }).select("-nonce -aadhaarHash");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
 /**
  * @swagger
@@ -105,7 +81,7 @@ router.put(
       const { walletAddress } = req.params;
       const { role } = req.body;
 
-      if (!["user", "verifier", "registrar", "admin"].includes(role)) {
+      if (!["user", "verifier", "registrar", "admin", "bank"].includes(role)) {
         return res.status(400).json({
           success: false,
           message: "Invalid role",
@@ -115,8 +91,8 @@ router.put(
       const user = await User.findOneAndUpdate(
         { walletAddress: walletAddress.toLowerCase() },
         { role },
-        { new: true }
-      ).select("-nonce -aadhaarHash");
+        { new: true },
+      ).select("-password -nonce -aadhaarHash");
 
       if (!user) {
         return res.status(404).json({
@@ -132,7 +108,7 @@ router.put(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -156,8 +132,8 @@ router.put(
       const user = await User.findOneAndUpdate(
         { walletAddress: walletAddress.toLowerCase() },
         { isVerified },
-        { new: true }
-      ).select("-nonce -aadhaarHash");
+        { new: true },
+      ).select("-password -nonce -aadhaarHash");
 
       if (!user) {
         return res.status(404).json({
@@ -173,7 +149,7 @@ router.put(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -215,7 +191,57 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
+
+/**
+ * @swagger
+ * /api/users/{walletAddress}:
+ *   get:
+ *     summary: Get user by wallet address
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/:walletAddress", auth, async (req, res, next) => {
+  try {
+    const { walletAddress } = req.params;
+    const normalizedWallet = walletAddress.toLowerCase();
+
+    const isSelfPrimary = req.user.walletAddress === normalizedWallet;
+    const isSelfLinked = (req.user.linkedWallets || []).some(
+      (wallet) => wallet.address === normalizedWallet,
+    );
+    const isPrivileged = PRIVILEGED_PROFILE_ROLES.has(req.user.role);
+
+    if (!isSelfPrimary && !isSelfLinked && !isPrivileged) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied.",
+      });
+    }
+
+    const user = await User.findOne({
+      $or: [
+        { walletAddress: normalizedWallet },
+        { "linkedWallets.address": normalizedWallet },
+      ],
+    }).select("-password -nonce -aadhaarHash");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

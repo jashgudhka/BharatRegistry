@@ -1,0 +1,35 @@
+# Besu Node 1 Configuration - Validator
+data-path="data/node1"
+genesis-file="config/genesis.json"
+
+# Network settings
+p2p-enabled=true
+p2p-host="127.0.0.1"
+p2p-port=30303
+
+# RPC settings
+rpc-http-enabled=true
+rpc-http-host="0.0.0.0"
+rpc-http-port=8545
+rpc-http-cors-origins=["*"]
+rpc-http-api=["ETH","NET","WEB3","ADMIN","IBFT","TXPOOL","MINER"]
+
+# WebSocket settings
+rpc-ws-enabled=true
+rpc-ws-host="0.0.0.0"
+rpc-ws-port=8546
+rpc-ws-api=["ETH","NET","WEB3"]
+
+# Mining/Validator settings
+miner-enabled=true
+miner-coinbase="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+
+# Zero gas price configuration (FREE TRANSACTIONS)
+min-gas-price=0
+tx-pool-price-bump=0
+
+# Logging
+logging="INFO"
+
+# Bootnodes (will be populated after first node starts)
+# bootnodes=[]

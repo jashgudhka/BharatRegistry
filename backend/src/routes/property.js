@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Property = require("../models/Property");
 const { auth, optionalAuth, authorize } = require("../middleware/auth");
+const { requireWallet } = require("../middleware/requireWallet");
 const { validatePropertyId, validatePagination } = require("../middleware/validation");
 const blockchainService = require("../services/blockchainService");
 
@@ -193,7 +194,7 @@ router.get("/search/query", async (req, res, next) => {
  *     security:
  *       - bearerAuth: []
  */
-router.post("/sync/:propertyId", auth, validatePropertyId, async (req, res, next) => {
+router.post("/sync/:propertyId", auth, requireWallet, validatePropertyId, async (req, res, next) => {
   try {
     const { propertyId } = req.params;
     const { metadata, documents, transactionHash } = req.body;

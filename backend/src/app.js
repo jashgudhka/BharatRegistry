@@ -6,12 +6,17 @@ const morgan = require("morgan");
 const mongoose = require("mongoose");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+const path = require("path");
 
 // Import routes
 const authRoutes = require("./routes/auth");
 const propertyRoutes = require("./routes/property");
 const transferRoutes = require("./routes/transfer");
 const userRoutes = require("./routes/user");
+const documentRoutes = require("./routes/document");
+const adminRoutes = require("./routes/admin");
+const bankRoutes = require("./routes/bank");
+const ecosystemRoutes = require("./routes/ecosystem");
 
 const app = express();
 
@@ -21,9 +26,9 @@ const swaggerOptions = {
     openapi: "3.0.0",
     info: {
       title: "Bharat Registry API",
-      version: "1.0.0",
+      version: "2.0.0",
       description:
-        "API documentation for Bharat Registry - Blockchain-Powered Land Registry System",
+        "API documentation for Bharat Registry - Blockchain-Powered Land Registry System for India",
       contact: {
         name: "Jash Gudhka",
       },
@@ -53,13 +58,18 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL 
+      ? process.env.FRONTEND_URL.split(",") 
+      : ["http://localhost:5173", "http://localhost:4173"],
     credentials: true,
-  })
+  }),
 );
 app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // API Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -69,6 +79,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/transfers", transferRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/documents", documentRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/bank", bankRoutes);
+app.use("/api/ecosystem", ecosystemRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -84,7 +98,7 @@ app.get("/", (req, res) => {
   res.json({
     message: "Welcome to Bharat Registry API",
     documentation: "/api-docs",
-    version: "1.0.0",
+    version: "2.0.0",
   });
 });
 
@@ -108,13 +122,28 @@ app.use((err, req, res, next) => {
 
 // Database connection and server start
 const PORT = process.env.PORT || 5000;
+const { setupGlobalEventListeners } = require("./services/eventListener");
 
 const startServer = async () => {
   try {
-    // Connect to MongoDB (optional - comment out if not using)
-    if (process.env.MONGODB_URI) {
-      await mongoose.connect(process.env.MONGODB_URI);
-      console.log("📦 Connected to MongoDB");
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
+
+    // Connect to MongoDB
+    const mongoUri =
+      process.env.MONGODB_URI || "mongodb://localhost:27017/bharat-registry";
+    await mongoose.connect(mongoUri);
+    console.log("📦 Connected to MongoDB");
+
+    // Start blockchain event listeners
+    try {
+      await setupGlobalEventListeners();
+    } catch (err) {
+      console.error(
+        "⚠️ Failed to setup blockchain event listeners:",
+        err.message,
+      );
     }
 
     app.listen(PORT, () => {
