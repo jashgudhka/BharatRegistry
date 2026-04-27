@@ -137,3 +137,5 @@ mcp.json
 *.swo
 *~
 *.mmd
+
+/docs/
