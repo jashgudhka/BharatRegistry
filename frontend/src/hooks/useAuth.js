@@ -10,8 +10,26 @@ export function useAuth() {
     JSON.parse(localStorage.getItem("bharat_user")) || null,
   );
   const [token, setToken] = useState(localStorage.getItem("bharat_token"));
+  const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const checkWalletRegistration = async () => {
+    if (!address) {
+      setIsRegistered(false);
+      return false;
+    }
+
+    try {
+      const res = await authAPI.checkWallet(address);
+      const registered = res.data.data.registered;
+      setIsRegistered(registered);
+      return registered;
+    } catch (err) {
+      setIsRegistered(false);
+      return false;
+    }
+  };
 
   // Check backend session on mount or token change
   useEffect(() => {
@@ -19,8 +37,13 @@ export function useAuth() {
       refreshUser();
     } else {
       setUser(null);
+      if (isConnected) {
+        checkWalletRegistration();
+      } else {
+        setIsRegistered(false);
+      }
     }
-  }, [token]);
+  }, [token, address, isConnected]);
 
   // Register a new user with email and password
   const register = async (formData) => {
@@ -135,6 +158,7 @@ export function useAuth() {
     user,
     token,
     isLoading,
+    isRegistered,
     isAuthenticated: !!user && !!token,
     hasWallet: !!user?.walletAddress,
     error,

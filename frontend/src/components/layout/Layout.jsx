@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
@@ -15,6 +15,7 @@ import {
   Search,
   UserPlus,
   LogIn,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { useAccount } from "wagmi";
@@ -34,8 +35,9 @@ export default function Layout({ children }) {
     isSuperAdmin,
     isRegistered,
     isLoading,
-    login,
+    logout,
   } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (href) =>
@@ -176,11 +178,11 @@ export default function Layout({ children }) {
               )}
               {isConnected && !isAuthenticated && isRegistered && (
                 <button
-                  onClick={login}
+                  onClick={() => navigate("/login")}
                   disabled={isLoading}
                   className="btn btn-primary text-sm py-2 px-4 hidden md:flex disabled:opacity-50"
                 >
-                  <LogIn size={16} /> {isLoading ? "Logging in..." : "Login"}
+                  <LogIn size={16} /> {isLoading ? "Loading..." : "Login"}
                 </button>
               )}
 
@@ -196,6 +198,17 @@ export default function Layout({ children }) {
                     </span>
                   )}
                 </div>
+              )}
+              {isAuthenticated && (
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                  }}
+                  className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-md"
+                >
+                  <LogOut size={16} /> Logout
+                </button>
               )}
 
               <WalletConnect />
@@ -303,14 +316,29 @@ export default function Layout({ children }) {
               <div className="pt-2 mt-2 border-t border-slate-200/50">
                 <button
                   onClick={() => {
-                    login();
+                    navigate("/login");
                     setMobileMenuOpen(false);
                   }}
                   disabled={isLoading}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors disabled:opacity-50 text-left"
                 >
                   <LogIn size={20} className="stroke-[2.5]" />
-                  {isLoading ? "Logging in..." : "Login"}
+                  {isLoading ? "Loading..." : "Login"}
+                </button>
+              </div>
+            )}
+            {isAuthenticated && (
+              <div className="pt-2 mt-2 border-t border-slate-200/50">
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 font-semibold transition-colors text-left"
+                >
+                  <LogOut size={20} className="stroke-[2.5]" />
+                  Logout
                 </button>
               </div>
             )}
