@@ -6,7 +6,9 @@ export function useAuth() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("bharat_user")) || null);
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("bharat_user")) || null,
+  );
   const [token, setToken] = useState(localStorage.getItem("bharat_token"));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,7 +33,8 @@ export function useAuth() {
       let message = err.response?.data?.message;
 
       if (!message && err?.code === "ERR_NETWORK") {
-        message = "Cannot reach backend server. Please ensure API is running on port 5000.";
+        message =
+          "Cannot reach backend server. Please ensure API is running on port 5000.";
       }
 
       setError(message || "Registration failed");
@@ -70,7 +73,7 @@ export function useAuth() {
       setError("No wallet connected in MetaMask/WalletConnect");
       return { success: false, error: "No wallet connected" };
     }
-    
+
     setIsLoading(true);
     setError(null);
     try {
@@ -96,7 +99,8 @@ export function useAuth() {
       if (!message) {
         const walletError = err?.shortMessage || err?.message || "";
         if (/rejected|denied|user rejected/i.test(walletError)) {
-          message = "Wallet signature was rejected. Please approve the signature to link wallet.";
+          message =
+            "Wallet signature was rejected. Please approve the signature to link wallet.";
         }
       }
       setError(message || "Wallet linking failed");
@@ -140,9 +144,10 @@ export function useAuth() {
     logout,
     refreshUser,
     isAdmin: user?.role === "admin",
-    isVerifier: user?.role === "verifier" || user?.role === "admin",
-    isRegistrar: user?.role === "registrar" || user?.role === "admin" || user?.role === "super_admin",
-    isBank: user?.role === "bank" || user?.role === "super_admin",
+    isVerifier: user?.role === "verifier",
+    isRegistrar: user?.role === "registrar",
+    isBank: user?.role === "bank",
     isSuperAdmin: user?.role === "super_admin",
+    isUserRole: user?.role === "user",
   };
 }

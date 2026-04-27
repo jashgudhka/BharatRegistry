@@ -41,30 +41,28 @@ export default function Layout({ children }) {
   const isActive = (href) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
 
-  const publicNav = [
-    { name: "Home", href: "/", icon: Home, exact: true },
-    { name: "Properties", href: "/properties", icon: Building2 },
-    { name: "Transfers", href: "/transfers", icon: Send },
-    { name: "Verify Docs", href: "/verify", icon: Search },
-  ];
+  const publicNav = [{ name: "Home", href: "/", icon: Home, exact: true }];
 
   const userNav = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Properties", href: "/properties", icon: Building2 },
+    { name: "Transfers", href: "/transfers", icon: Send },
     { name: "Register Property", href: "/register-property", icon: Plus },
     { name: "Ecosystem", href: "/ecosystem", icon: Layers },
+    { name: "KYC Center", href: "/kyc", icon: FileText },
   ];
 
   const adminNav = [
     { name: "Admin Dashboard", href: "/admin", icon: Shield },
-    { name: "KYC Center", href: "/admin/users", icon: Users },
+    { name: "KYC Review", href: "/admin/users", icon: Users },
+    { name: "Property Verify", href: "/admin/properties", icon: Building2 },
+    { name: "Document Verify", href: "/admin/documents", icon: Search },
+    { name: "Verify Uploads", href: "/verify", icon: FileText },
   ];
 
-  const registrarNav = [
-    { name: "Final Registrar", href: "/admin/properties", icon: Building2 },
-    { name: "Document Registry", href: "/admin/documents", icon: FileText },
+  const superAdminNav = [
+    { name: "Super Admin", href: "/super-admin", icon: Shield },
   ];
-
-  const superAdminNav = [{ name: "Super Admin", href: "/super-admin", icon: Shield }];
 
   const bankNav = [{ name: "Bank Portal", href: "/bank", icon: Landmark }];
 
@@ -113,6 +111,8 @@ export default function Layout({ children }) {
               ))}
 
               {isAuthenticated &&
+                // Assuming isUserRole is added to useAuth
+                user?.role === "user" &&
                 userNav.map((item) => (
                   <Link
                     key={item.name}
@@ -125,21 +125,8 @@ export default function Layout({ children }) {
                 ))}
 
               {isAuthenticated &&
-                (isAdmin || isVerifier) &&
+                (isAdmin || isVerifier || isRegistrar) &&
                 adminNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={navLinkClass(item.href)}
-                  >
-                    <item.icon size={16} className="stroke-[2.5]" />
-                    {item.name}
-                  </Link>
-                ))}
-
-              {isAuthenticated &&
-                (isAdmin || isRegistrar) &&
-                registrarNav.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
@@ -250,35 +237,24 @@ export default function Layout({ children }) {
             ))}
             {isAuthenticated && (
               <div className="pt-2 mt-2 border-t border-slate-200/50">
-                {userNav.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-primary-50 hover:text-primary-600 font-semibold transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <item.icon size={20} className="stroke-[2.5]" />
-                    {item.name}
-                  </Link>
-                ))}
-                {(isAdmin || isVerifier) &&
-                  adminNav.map((item) => (
+                {user?.role === "user" &&
+                  userNav.map((item) => (
                     <Link
                       key={item.name}
                       to={item.href}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-amber-700 hover:bg-amber-50 font-semibold transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-primary-50 hover:text-primary-600 font-semibold transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <item.icon size={20} className="stroke-[2.5]" />
                       {item.name}
                     </Link>
                   ))}
-                {(isAdmin || isRegistrar) &&
-                  registrarNav.map((item) => (
+                {(isAdmin || isVerifier || isRegistrar) &&
+                  adminNav.map((item) => (
                     <Link
                       key={item.name}
                       to={item.href}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-700 hover:bg-blue-50 font-semibold transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-amber-700 hover:bg-amber-50 font-semibold transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <item.icon size={20} className="stroke-[2.5]" />

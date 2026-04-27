@@ -13,6 +13,7 @@ import DocumentVerify from "./pages/DocumentVerify";
 import EcosystemWorkbench from "./pages/EcosystemWorkbench";
 import NotFound from "./pages/NotFound";
 import AuthRoute from "./components/layout/AuthRoute";
+import Kyc from "./pages/Kyc";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -33,52 +34,44 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Authenticated / Protected */}
+        {/* Authenticated / Protected - User only */}
         <Route
-          path="/properties"
+          path="/properties/*"
           element={
-            <AuthRoute>
-              <Properties />
+            <AuthRoute allowedRoles={["user"]}>
+              <Routes>
+                <Route path="/" element={<Properties />} />
+                <Route path=":id" element={<PropertyDetails />} />
+              </Routes>
             </AuthRoute>
           }
         />
         <Route
-          path="/properties/:id"
+          path="/transfers/*"
           element={
-            <AuthRoute>
-              <PropertyDetails />
+            <AuthRoute allowedRoles={["user"]}>
+              <Routes>
+                <Route path="/" element={<Transfers />} />
+                <Route path=":transferId" element={<TransferDetails />} />
+              </Routes>
             </AuthRoute>
           }
         />
-        <Route
-          path="/transfers"
-          element={
-            <AuthRoute>
-              <Transfers />
-            </AuthRoute>
-          }
-        />
-        <Route
-          path="/transfers/:transferId"
-          element={
-            <AuthRoute>
-              <TransferDetails />
-            </AuthRoute>
-          }
-        />
-        <Route
-          path="/verify"
-          element={
-            <AuthRoute>
-              <DocumentVerify />
-            </AuthRoute>
-          }
-        />
+
         <Route
           path="/ecosystem"
           element={
-            <AuthRoute>
+            <AuthRoute allowedRoles={["user"]}>
               <EcosystemWorkbench />
+            </AuthRoute>
+          }
+        />
+
+        <Route
+          path="/kyc"
+          element={
+            <AuthRoute allowedRoles={["user"]}>
+              <Kyc />
             </AuthRoute>
           }
         />
@@ -86,7 +79,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <AuthRoute>
+            <AuthRoute allowedRoles={["user"]}>
               <Dashboard />
             </AuthRoute>
           }
@@ -94,33 +87,34 @@ function App() {
         <Route
           path="/register-property"
           element={
-            <AuthRoute>
+            <AuthRoute allowedRoles={["user"]}>
               <RegisterProperty />
             </AuthRoute>
           }
         />
 
-        {/* Admin Panel */}
+        {/* Admin/Verifier/Registrar */}
+        <Route
+          path="/verify"
+          element={
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
+              <DocumentVerify />
+            </AuthRoute>
+          }
+        />
         <Route
           path="/admin"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
               <AdminDashboard />
             </AuthRoute>
           }
         />
-        <Route
-          path="/super-admin"
-          element={
-            <AuthRoute allowedRoles={["super_admin"]}>
-              <SuperAdminDashboard />
-            </AuthRoute>
-          }
-        />
+
         <Route
           path="/admin/users"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
               <AdminUsers />
             </AuthRoute>
           }
@@ -128,7 +122,7 @@ function App() {
         <Route
           path="/admin/properties"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
               <AdminProperties />
             </AuthRoute>
           }
@@ -136,7 +130,7 @@ function App() {
         <Route
           path="/admin/documents"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin"]}>
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar"]}>
               <AdminDocuments />
             </AuthRoute>
           }
@@ -146,14 +140,24 @@ function App() {
         <Route
           path="/bank"
           element={
-            <AuthRoute allowedRoles={["bank", "admin"]}>
+            <AuthRoute allowedRoles={["bank"]}>
               <BankDashboard />
             </AuthRoute>
           }
         />
 
+        {/* Super Admin */}
+        <Route
+          path="/super-admin"
+          element={
+            <AuthRoute allowedRoles={["super_admin"]}>
+              <SuperAdminDashboard />
+            </AuthRoute>
+          }
+        />
+
         {/* Fallback */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
   );
