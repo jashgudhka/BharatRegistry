@@ -196,7 +196,7 @@ export default function Layout({ children }) {
                     logout();
                     navigate("/login");
                   }}
-                  className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-md"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-md font-bold"
                 >
                   <LogOut size={16} /> Logout
                 </button>
@@ -249,6 +249,24 @@ export default function Layout({ children }) {
             ))}
             {isAuthenticated && (
               <div className="pt-2 mt-2 border-t border-slate-200/50">
+                {/* Dynamic Dashboard Link for Mobile */}
+                <Link
+                  to={
+                    user?.role === "super_admin"
+                      ? "/super-admin"
+                      : user?.role === "bank"
+                      ? "/bank"
+                      : (user?.role === "admin" || user?.role === "verifier" || user?.role === "registrar")
+                      ? "/admin"
+                      : "/dashboard"
+                  }
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-700 bg-primary-50 font-bold mb-1"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard size={20} className="stroke-[2.5]" />
+                  My Dashboard
+                </Link>
+
                 {user?.role === "user" &&
                   userNav.map((item) => (
                     <Link

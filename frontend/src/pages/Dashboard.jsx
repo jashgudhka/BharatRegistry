@@ -21,8 +21,9 @@ export default function Dashboard() {
   const { address, isConnected } = useAccount();
   const { user, hasWallet, linkWallet, isLoading: authLoading, error: authError } = useAuth();
   
-  // Use either the linked wallet or the currently connected one
-  const searchAddress = user?.walletAddress || address;
+  // Use either the currently connected wallet (from Wagmi) or the linked walletAddress from DB
+  // This ensures that if a user just connected a new wallet, they see its properties immediately.
+  const searchAddress = address || user?.walletAddress;
   
   const { propertyIds, isLoading: propertiesLoading } = useOwnerProperties(searchAddress);
   const { transferIds, isLoading: transfersLoading } = useUserTransfers(searchAddress);

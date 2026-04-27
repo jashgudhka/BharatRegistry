@@ -38,7 +38,7 @@ function App() {
         <Route
           path="/properties/*"
           element={
-            <AuthRoute allowedRoles={["user"]}>
+            <AuthRoute allowedRoles={["user", "admin", "verifier", "registrar", "super_admin", "bank"]}>
               <Routes>
                 <Route path="/" element={<Properties />} />
                 <Route path=":id" element={<PropertyDetails />} />
@@ -49,7 +49,7 @@ function App() {
         <Route
           path="/transfers/*"
           element={
-            <AuthRoute allowedRoles={["user"]}>
+            <AuthRoute allowedRoles={["user", "admin", "verifier", "registrar", "super_admin", "bank"]}>
               <Routes>
                 <Route path="/" element={<Transfers />} />
                 <Route path=":transferId" element={<TransferDetails />} />
@@ -61,7 +61,7 @@ function App() {
         <Route
           path="/ecosystem"
           element={
-            <AuthRoute allowedRoles={["user"]}>
+            <AuthRoute allowedRoles={["user", "admin", "verifier", "registrar", "super_admin", "bank"]}>
               <EcosystemWorkbench />
             </AuthRoute>
           }
@@ -70,7 +70,7 @@ function App() {
         <Route
           path="/kyc"
           element={
-            <AuthRoute allowedRoles={["user"]}>
+            <AuthRoute allowedRoles={["user", "admin", "verifier", "registrar", "super_admin", "bank"]}>
               <Kyc />
             </AuthRoute>
           }

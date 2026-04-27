@@ -11,7 +11,7 @@ import { adminAPI } from '../utils/api'
 import toast from 'react-hot-toast'
 
 export default function PropertyDetails() {
-  const { propertyId } = useParams()
+  const { id: propertyId } = useParams()
   const { address, isConnected } = useAccount()
   const { hasWallet } = useAuth()
   const { property, isLoading, error } = useProperty(propertyId)

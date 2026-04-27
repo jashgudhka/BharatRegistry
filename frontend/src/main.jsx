@@ -7,6 +7,7 @@ import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { Toaster } from "react-hot-toast";
 
 import App from "./App";
+import { AuthProvider } from "./context/AuthContext";
 import { config } from "./config/wagmi";
 import "./index.css";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -35,22 +36,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           showRecentTransactions={false}
         >
           <BrowserRouter>
-            <App />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#fff",
-                  color: "#1e293b",
-                  borderRadius: "1rem",
-                  border: "1px solid rgba(255,255,255,0.8)",
-                  boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                },
-              }}
-            />
+            <AuthProvider>
+              <App />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: "#fff",
+                    color: "#1e293b",
+                    borderRadius: "1rem",
+                    border: "1px solid rgba(255,255,255,0.8)",
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            </AuthProvider>
           </BrowserRouter>
         </RainbowKitProvider>
       </QueryClientProvider>

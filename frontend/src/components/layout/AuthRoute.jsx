@@ -19,7 +19,16 @@ export default function AuthRoute({ children, allowedRoles = [] }) {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to their specific dashboard instead of a generic one
+    let target = "/dashboard";
+    if (user?.role === "admin" || user?.role === "verifier" || user?.role === "registrar") {
+      target = "/admin";
+    } else if (user?.role === "bank") {
+      target = "/bank";
+    } else if (user?.role === "super_admin") {
+      target = "/super-admin";
+    }
+    return <Navigate to={target} replace />;
   }
 
   return children;

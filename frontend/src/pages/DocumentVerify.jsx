@@ -9,6 +9,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { documentAPI } from "../utils/api";
+import toast from "react-hot-toast";
 
 export default function DocumentVerify() {
   const [hash, setHash] = useState("");
@@ -46,24 +47,75 @@ export default function DocumentVerify() {
         </p>
       </div>
 
-      {/* Search */}
-      <div className="card p-8">
-        <label className="label">Document Hash / IPFS CID</label>
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              className="input pl-11 font-mono"
-              placeholder="Enter document hash (e.g., Qm...)"
-              value={hash}
-              onChange={(e) => setHash(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleVerify()}
-            />
+      {/* Search & Upload */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="card p-8 flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Search size={20} className="text-primary-500" /> Search by Hash
+            </h2>
+            <label className="label text-xs uppercase tracking-wider font-bold text-slate-400">
+              IPFS Content ID (CID)
+            </label>
+            <div className="flex gap-2 mt-1">
+              <div className="relative flex-1">
+                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  className="input pl-11 font-mono text-sm"
+                  placeholder="Qm..."
+                  value={hash}
+                  onChange={(e) => setHash(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+                />
+              </div>
+              <button onClick={handleVerify} disabled={loading} className="btn btn-primary px-5">
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+              </button>
+            </div>
           </div>
-          <button onClick={handleVerify} disabled={loading} className="btn btn-primary">
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-            Verify
+          <p className="text-[10px] text-slate-400 font-medium mt-4">
+            Verify authenticity of an existing CID on the blockchain.
+          </p>
+        </div>
+
+        <div className="card p-8 border-dashed border-2 border-primary-200 bg-primary-50/20 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-primary-100 rounded-full blur-2xl group-hover:bg-primary-200 transition-colors"></div>
+          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <ExternalLink size={20} className="text-primary-500" /> Upload & Get Hash
+          </h2>
+          <p className="text-sm text-slate-600 mb-6">
+            Need to know the IPFS hash of a file? Upload it here to compute the CID and register it on our backend.
+          </p>
+          <input
+            type="file"
+            id="tool-upload"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setLoading(true);
+              try {
+                const formData = new FormData();
+                formData.append("document", file);
+                formData.append("documentType", "other");
+                const res = await documentAPI.upload(formData);
+                setHash(res.data.data.hash);
+                toast.success("File uploaded! Hash retrieved.");
+              } catch (err) {
+                toast.error("Upload failed");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+          <button
+            onClick={() => document.getElementById("tool-upload").click()}
+            disabled={loading}
+            className="btn btn-outline border-primary-300 text-primary-600 hover:bg-primary-500 hover:text-white w-full py-4 text-base font-bold shadow-sm"
+          >
+            {loading ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
+            Select File to Upload
           </button>
         </div>
       </div>

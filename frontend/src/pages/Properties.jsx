@@ -20,7 +20,9 @@ function PropertyCard({ propertyId }) {
     );
   }
 
-  if (!property) return null;
+  if (!property || property.propertyId === 0) return null;
+  
+  console.log(`Rendering property ${propertyId}:`, property);
 
   const statusColors = {
     pending: "badge-pending",
@@ -93,6 +95,7 @@ export default function Properties() {
 
   // Generate array of property IDs (1 to total)
   const propertyIds = Array.from({ length: total }, (_, i) => i + 1);
+  console.log("Total properties fetched:", total, "IDs:", propertyIds);
 
   return (
     <div className="space-y-8 animate-fade-in relative z-10 w-full">
