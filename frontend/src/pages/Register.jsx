@@ -65,6 +65,7 @@ export default function Register() {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
+    username: "",
     fullName: "",
     fatherName: "",
     dateOfBirth: "",
@@ -96,6 +97,11 @@ export default function Register() {
     const newErrors = {};
 
     if (stepNum === 1) {
+      if (!formData.username || formData.username.trim().length < 3)
+        newErrors.username = "Username is required (min 3 chars)";
+      else if (!/^[a-zA-Z0-9_]+$/.test(formData.username))
+        newErrors.username = "Username can only contain letters, numbers, and underscores";
+
       if (!formData.fullName || formData.fullName.trim().length < 2)
         newErrors.fullName = "Full name is required (min 2 chars)";
       if (!formData.dateOfBirth)
@@ -216,6 +222,20 @@ export default function Register() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="md:col-span-2">
+                  <label className="label">Username *</label>
+                  <input
+                    type="text"
+                    className={`input ${errors.username ? "border-rose-400 focus:border-rose-500" : ""}`}
+                    placeholder="Choose a unique username"
+                    value={formData.username}
+                    onChange={(e) => handleChange("username", e.target.value)}
+                  />
+                  {errors.username && (
+                    <p className="text-rose-500 text-xs mt-1 font-medium">{errors.username}</p>
+                  )}
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="label">Full Name *</label>
                   <input

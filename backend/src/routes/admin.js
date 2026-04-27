@@ -154,14 +154,14 @@ router.get("/users/pending", async (req, res, next) => {
  *     summary: Approve or reject user KYC
  *     tags: [Admin]
  */
-router.put("/users/:walletAddress/verify", async (req, res, next) => {
+router.put("/users/:identifier/verify", async (req, res, next) => {
   try {
-    const { walletAddress } = req.params;
+    const { identifier } = req.params;
     const { approved, reason } = req.body;
 
     const update = {
       isVerified: approved,
-      verifiedBy: req.walletAddress,
+      verifiedBy: req.user.walletAddress || req.user.email,
       verifiedAt: new Date(),
     };
 
@@ -169,11 +169,17 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
       update.rejectionReason = reason;
     }
 
-    const user = await User.findOneAndUpdate(
-      { walletAddress: walletAddress.toLowerCase() },
-      update,
-      { new: true },
-    ).select("-password -nonce -aadhaarHash");
+    // Try finding by ID first, then by walletAddress
+    let user;
+    if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
+      user = await User.findByIdAndUpdate(identifier, update, { new: true });
+    } else {
+      user = await User.findOneAndUpdate(
+        { walletAddress: identifier.toLowerCase() },
+        update,
+        { new: true },
+      );
+    }
 
     if (!user) {
       return res.status(404).json({
@@ -185,7 +191,7 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
     res.json({
       success: true,
       message: approved ? "User KYC approved" : "User KYC rejected",
-      data: user,
+      data: user.toObject({ transform: (doc, ret) => { delete ret.password; delete ret.nonce; delete ret.aadhaarHash; return ret; } }),
     });
   } catch (error) {
     next(error);
@@ -200,25 +206,30 @@ router.put("/users/:walletAddress/verify", async (req, res, next) => {
  *     tags: [Admin]
  */
 router.put(
-  "/users/:walletAddress/role",
+  "/users/:identifier/role",
   authorize("super_admin"),
   async (req, res, next) => {
     try {
-      const { walletAddress } = req.params;
+      const { identifier } = req.params;
       const { role } = req.body;
 
-      if (!["user", "verifier", "registrar", "admin", "bank"].includes(role)) {
+      if (!["user", "verifier", "registrar", "admin", "bank", "super_admin"].includes(role)) {
         return res.status(400).json({
           success: false,
           message: "Invalid role",
         });
       }
 
-      const user = await User.findOneAndUpdate(
-        { walletAddress: walletAddress.toLowerCase() },
-        { role },
-        { new: true },
-      ).select("-password -nonce -aadhaarHash");
+      let user;
+      if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
+        user = await User.findByIdAndUpdate(identifier, { role }, { new: true });
+      } else {
+        user = await User.findOneAndUpdate(
+          { walletAddress: identifier.toLowerCase() },
+          { role },
+          { new: true },
+        );
+      }
 
       if (!user) {
         return res
@@ -226,7 +237,7 @@ router.put(
           .json({ success: false, message: "User not found" });
       }
 
-      res.json({ success: true, data: user });
+      res.json({ success: true, data: user.toObject({ transform: (doc, ret) => { delete ret.password; delete ret.nonce; delete ret.aadhaarHash; return ret; } }) });
     } catch (error) {
       next(error);
     }

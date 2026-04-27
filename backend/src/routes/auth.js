@@ -34,6 +34,7 @@ const generateToken = (user) => {
     {
       userId: user._id,
       email: user.email,
+      username: user.username,
       walletAddress: user.walletAddress,
       role: user.role,
       isVerified: user.isVerified,
@@ -94,6 +95,7 @@ router.post("/register", async (req, res, next) => {
   try {
     const {
       email,
+      username,
       password,
       fullName,
       fatherName,
@@ -105,20 +107,29 @@ router.post("/register", async (req, res, next) => {
       aadhaarNumber,
     } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !username) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Email, password, and username are required",
       });
     }
 
     const normalizedEmail = email.toLowerCase();
+    const normalizedUsername = username.toLowerCase().trim();
 
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing) {
+    const existingEmail = await User.findOne({ email: normalizedEmail });
+    if (existingEmail) {
       return res.status(400).json({
         success: false,
         message: "Email is already registered",
+      });
+    }
+
+    const existingUsername = await User.findOne({ username: normalizedUsername });
+    if (existingUsername) {
+      return res.status(400).json({
+        success: false,
+        message: "Username is already taken",
       });
     }
 
@@ -242,6 +253,7 @@ router.post("/register", async (req, res, next) => {
 
     const userData = {
       email: normalizedEmail,
+      username: normalizedUsername,
       password: hashedPassword,
       fullName: fullName.trim(),
       fatherName: fatherName?.trim(),
@@ -266,6 +278,7 @@ router.post("/register", async (req, res, next) => {
       message: "Registration successful! You can now log in.",
       data: {
         email: user.email,
+        username: user.username,
         fullName: user.fullName,
       },
     });
@@ -327,6 +340,7 @@ router.post("/login", async (req, res, next) => {
         token,
         user: {
           email: user.email,
+          username: user.username,
           fullName: user.fullName,
           walletAddress: user.walletAddress,
           role: user.role,
@@ -474,6 +488,7 @@ router.get("/me", auth, async (req, res) => {
     success: true,
     data: {
       email: user.email,
+      username: user.username,
       walletAddress: user.walletAddress,
       fullName: user.fullName,
       fatherName: user.fatherName,

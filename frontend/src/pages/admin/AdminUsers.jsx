@@ -31,13 +31,13 @@ export default function AdminUsers() {
 
   useEffect(() => { fetchUsers(); }, [filter, search]);
 
-  const handleVerify = async (walletAddress, approved) => {
-    setActionLoading(walletAddress);
+  const handleVerify = async (userId, approved) => {
+    setActionLoading(userId);
     try {
       const reason = approved ? undefined : prompt("Reason for rejection:");
       if (!approved && !reason) { setActionLoading(null); return; }
 
-      await adminAPI.verifyUser(walletAddress, approved, reason);
+      await adminAPI.verifyUser(userId, approved, reason);
       toast.success(approved ? "User KYC approved!" : "User KYC rejected");
       fetchUsers();
     } catch (err) {
@@ -47,9 +47,9 @@ export default function AdminUsers() {
     }
   };
 
-  const handleRoleChange = async (walletAddress, role) => {
+  const handleRoleChange = async (userId, role) => {
     try {
-      await adminAPI.updateUserRole(walletAddress, role);
+      await adminAPI.updateUserRole(userId, role);
       toast.success(`Role updated to ${role}`);
       fetchUsers();
     } catch (err) {
@@ -111,7 +111,10 @@ export default function AdminUsers() {
                     {user.fullName?.[0] || "?"}
                   </div>
                   <div>
-                    <p className="font-bold text-slate-800">{user.fullName || "—"}</p>
+                    <p className="font-bold text-slate-800 flex items-center gap-2">
+                      {user.fullName || "—"} 
+                      {user.username && <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">@{user.username}</span>}
+                    </p>
                     <p className="text-xs text-slate-500 font-mono">{user.walletAddress}</p>
                     <div className="flex gap-3 mt-1 text-xs text-slate-500">
                       {user.panNumber && <span>PAN: <span className="font-mono font-bold">{user.panNumber}</span></span>}
@@ -129,7 +132,7 @@ export default function AdminUsers() {
                   {isSuperAdmin ? (
                     <select
                       value={user.role}
-                      onChange={(e) => handleRoleChange(user.walletAddress, e.target.value)}
+                      onChange={(e) => handleRoleChange(user._id, e.target.value)}
                       className="text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
                     >
                       <option value="user">User</option>
@@ -148,16 +151,16 @@ export default function AdminUsers() {
                   {!user.isVerified && (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleVerify(user.walletAddress, true)}
-                        disabled={actionLoading === user.walletAddress}
+                        onClick={() => handleVerify(user._id, true)}
+                        disabled={actionLoading === user._id}
                         className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1"
                       >
-                        {actionLoading === user.walletAddress ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                        {actionLoading === user._id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
                         Approve
                       </button>
                       <button
-                        onClick={() => handleVerify(user.walletAddress, false)}
-                        disabled={actionLoading === user.walletAddress}
+                        onClick={() => handleVerify(user._id, false)}
+                        disabled={actionLoading === user._id}
                         className="px-3 py-1.5 bg-rose-100 text-rose-700 rounded-lg text-xs font-bold hover:bg-rose-200 transition-colors flex items-center gap-1"
                       >
                         <XCircle size={12} /> Reject

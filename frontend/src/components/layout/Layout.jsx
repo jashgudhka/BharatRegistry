@@ -201,7 +201,7 @@ export default function Layout({ children }) {
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span className="text-xs font-bold text-emerald-700">
-                    {user?.fullName?.split(" ")[0] || "User"}
+                    {user?.username || user?.fullName?.split(" ")[0] || "User"}
                   </span>
                   {user?.role !== "user" && (
                     <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">

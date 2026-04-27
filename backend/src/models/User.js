@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
     },
 
+    username: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      sparse: true, // Allow null/empty during migration if needed
+    },
+
     // Additional linked wallets
     linkedWallets: [
       {

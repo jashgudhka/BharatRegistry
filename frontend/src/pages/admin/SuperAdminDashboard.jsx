@@ -27,9 +27,9 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => { fetchUsers(); }, [filter, search]);
 
-  const handleRoleChange = async (walletAddress, role) => {
+  const handleRoleChange = async (userId, role) => {
     try {
-      await adminAPI.updateUserRole(walletAddress, role);
+      await adminAPI.updateUserRole(userId, role);
       toast.success(`Role updated to ${role}`);
       fetchUsers();
     } catch (err) {
@@ -104,6 +104,7 @@ export default function SuperAdminDashboard() {
                   <div>
                     <p className="font-bold text-slate-800 flex items-center gap-2">
                        {user.fullName || "—"} 
+                       {user.username && <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">@{user.username}</span>}
                        {user.role === 'super_admin' && <ShieldAlert size={14} className="text-red-500" />}
                        {user.role === 'bank' && <Building2 size={14} className="text-indigo-500" />}
                     </p>
@@ -119,7 +120,7 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-center gap-3">
                   <select
                     value={user.role}
-                    onChange={(e) => handleRoleChange(user.walletAddress, e.target.value)}
+                    onChange={(e) => handleRoleChange(user._id, e.target.value)}
                     className="text-xs font-bold border-2 border-red-200 rounded-lg px-3 py-2 bg-red-50 text-red-800 outline-none focus:border-red-400 cursor-pointer"
                   >
                     <option value="user">User</option>
