@@ -41,6 +41,15 @@ export function AuthProvider({ children }) {
     }
   }, [address]);
 
+  // Logout
+  const logout = useCallback(() => {
+    localStorage.removeItem("bharat_token");
+    localStorage.removeItem("bharat_user");
+    setToken(null);
+    setUser(null);
+    setIsRegistered(false);
+  }, []);
+
   // Refresh user data from API
   const refreshUser = useCallback(async () => {
     if (!token) return;
@@ -54,15 +63,6 @@ export function AuthProvider({ children }) {
       logout();
     }
   }, [token, logout]);
-
-  // Logout
-  const logout = useCallback(() => {
-    localStorage.removeItem("bharat_token");
-    localStorage.removeItem("bharat_user");
-    setToken(null);
-    setUser(null);
-    setIsRegistered(false);
-  }, []);
 
   // Sync state on mount or change
   useEffect(() => {

@@ -5,7 +5,7 @@ import { injected } from "wagmi/connectors";
 
 // Define Bharat Private Network for zero-gas experience
 const bharatNetwork = {
-  id: 31337,
+  id: 1337,
   name: "Bharat Private Network",
   nativeCurrency: {
     decimals: 18,
@@ -30,13 +30,11 @@ const projectId =
 export const config = getDefaultConfig({
   appName: "Bharat Registry — Blockchain Land Registry",
   projectId: projectId,
-  // Bharat Network is FIRST — auto-selected as default
-  chains: [bharatNetwork, sepolia, mainnet],
+  // Bharat Network is the ONLY chain for this environment
+  chains: [bharatNetwork],
   connectors: [injected()],
   transports: {
     [bharatNetwork.id]: http("http://127.0.0.1:8545"),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
   },
   ssr: false,
 });

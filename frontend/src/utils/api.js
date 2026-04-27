@@ -3,9 +3,6 @@ import { API_URL } from "./constants";
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 // Request interceptor to add JWT token
@@ -45,10 +42,7 @@ export const authAPI = {
 
 // Documents
 export const documentAPI = {
-  upload: (formData) =>
-    api.post("/documents/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  upload: (formData) => api.post("/documents/upload", formData),
   getMyDocuments: () => api.get("/documents/my"),
   verifyDocument: (hash) => api.get(`/documents/verify/${hash}`),
   downloadDocument: (hash) =>

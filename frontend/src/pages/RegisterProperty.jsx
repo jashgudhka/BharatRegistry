@@ -164,7 +164,7 @@ export default function RegisterProperty() {
       setIsUploading(true);
       const uploadData = new FormData();
       uploadData.append("document", file);
-      uploadData.append("documentType", "deed");
+      uploadData.append("documentType", "sale_deed");
       uploadData.append(
         "description",
         `Deed for Survey Number ${formData.surveyNumber}`,

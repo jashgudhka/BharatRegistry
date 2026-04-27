@@ -13,11 +13,12 @@ import toast from 'react-hot-toast'
 export default function PropertyDetails() {
   const { id: propertyId } = useParams()
   const { address, isConnected } = useAccount()
-  const { hasWallet } = useAuth()
   const { property, isLoading, error } = useProperty(propertyId)
   const { isVerified } = useIsPropertyVerified(propertyId)
   const { transferIds } = usePropertyTransfers(propertyId)
   const [showTransferModal, setShowTransferModal] = useState(false)
+  const { user, hasWallet, isAdmin, isVerifier, isRegistrar, isBank, isSuperAdmin } = useAuth()
+  const [actionLoading, setActionLoading] = useState(false)
 
   if (isLoading) {
     return (
@@ -58,9 +59,6 @@ export default function PropertyDetails() {
       </div>
     )
   }
-
-  const { isOwner, isAdmin, isVerifier, isRegistrar, isSuperAdmin } = useAuth()
-  const [actionLoading, setActionLoading] = useState(false)
 
   const handleVerify = async (approved) => {
     setActionLoading(true)
