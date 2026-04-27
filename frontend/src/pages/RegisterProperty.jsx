@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useAccount } from "wagmi";
 import {
@@ -13,23 +13,31 @@ import {
   Home,
   ShieldCheck,
   Loader2,
-  ShieldAlert
+  ShieldAlert,
+  Link as LinkIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { decodeEventLog } from "viem";
 import { LAND_REGISTRY_ABI } from "../config/LandRegistryABI";
-import { propertyAPI } from "../utils/api";
+import { propertyAPI, documentAPI } from "../utils/api";
 import { useRegisterProperty } from "../hooks/useContract";
 import { PROPERTY_TYPES, INDIAN_STATES } from "../utils/constants";
 
 export default function RegisterProperty() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
-  const { hasWallet, user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const {
+    hasWallet,
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+  } = useAuth();
   const { registerProperty, isLoading, isSuccess, hash, error, receipt } =
     useRegisterProperty();
 
   const [hasSynced, setHasSynced] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   if (!authLoading && !isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -51,16 +59,20 @@ export default function RegisterProperty() {
           <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 border border-amber-100">
             <ShieldAlert size={48} className="text-amber-500" />
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">Identity Required</h1>
+          <h1 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">
+            Identity Required
+          </h1>
           <p className="text-slate-600 text-lg font-medium mb-10 leading-relaxed max-w-lg mx-auto">
-            You must complete your KYC verification before registering high-value assets on the Bharat Registry blockchain. This ensures sovereign compliance and legal security.
+            You must complete your KYC verification before registering
+            high-value assets on the Bharat Registry blockchain. This ensures
+            sovereign compliance and legal security.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/dashboard" className="btn btn-secondary px-8 font-bold">
               Return to Dashboard
             </Link>
             <div className="bg-amber-100 text-amber-700 px-8 py-3 rounded-xl font-bold border border-amber-200">
-               Verification Pending
+              Verification Pending
             </div>
           </div>
         </div>
@@ -96,10 +108,10 @@ export default function RegisterProperty() {
                 data: log.data,
                 topics: log.topics,
               });
-              
-              if (decoded.eventName === 'PropertyRegistered') {
+
+              if (decoded.eventName === "PropertyRegistered") {
                 const propertyId = decoded.args.propertyId.toString();
-                
+
                 // Call backend sync
                 await propertyAPI.sync(propertyId, {
                   transactionHash: hash,
@@ -108,11 +120,15 @@ export default function RegisterProperty() {
                     city: formData.city,
                     state: formData.state,
                   },
-                  documents: formData.ipfsHash ? [{
-                    name: 'Property Deed',
-                    ipfsHash: formData.ipfsHash,
-                    documentType: 'deed'
-                  }] : []
+                  documents: formData.ipfsHash
+                    ? [
+                        {
+                          name: "Property Deed",
+                          ipfsHash: formData.ipfsHash,
+                          documentType: "deed",
+                        },
+                      ]
+                    : [],
                 });
                 break;
               }
@@ -126,13 +142,49 @@ export default function RegisterProperty() {
         }
       }
     };
-    
+
     syncProperty();
   }, [isSuccess, receipt, hasSynced, hash, formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File is too large. Maximum size is 10MB.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const uploadData = new FormData();
+      uploadData.append("document", file);
+      uploadData.append("documentType", "deed");
+      uploadData.append(
+        "description",
+        `Deed for Survey Number ${formData.surveyNumber}`,
+      );
+
+      const res = await documentAPI.upload(uploadData);
+
+      if (res.data.success) {
+        setFormData((prev) => ({ ...prev, ipfsHash: res.data.data.hash }));
+        toast.success("Document uploaded securely to IPFS.");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to upload document";
+      toast.error(msg);
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -178,12 +230,14 @@ export default function RegisterProperty() {
               Registration Successful!
             </h2>
             <p className="text-slate-500 font-medium text-lg max-w-md mx-auto mb-10 leading-relaxed">
-              Your property has been permanently registered on the blockchain. It will be independently verified by consortium nodes shortly.
+              Your property has been permanently registered on the blockchain.
+              It will be independently verified by consortium nodes shortly.
             </p>
             {hash && (
               <div className="bg-white/60 p-6 rounded-2xl mb-10 border border-emerald-100 shadow-inner max-w-lg mx-auto transform -rotate-1 hover:rotate-0 transition-transform cursor-pointer">
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center justify-center gap-2">
-                   <ShieldCheck size={14} className="text-emerald-500" /> Tx Hash Identity
+                  <ShieldCheck size={14} className="text-emerald-500" /> Tx Hash
+                  Identity
                 </p>
                 <p className="font-mono text-sm font-semibold text-slate-700 break-all select-all">
                   {hash}
@@ -217,9 +271,11 @@ export default function RegisterProperty() {
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-primary-400/30 to-indigo-400/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3"></div>
         <div className="text-center relative z-10">
           <div className="w-20 h-20 bg-white/60 rounded-2xl mx-auto flex items-center justify-center shadow-sm border border-white mb-6">
-             <Home className="w-10 h-10 text-primary-600" />
+            <Home className="w-10 h-10 text-primary-600" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-3">Asset Registration</h1>
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-3">
+            Asset Registration
+          </h1>
           <p className="text-lg font-medium text-slate-500">संपत्ति पंजीकरण</p>
         </div>
 
@@ -229,26 +285,38 @@ export default function RegisterProperty() {
             <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-primary-500/30 mb-3 transform hover:scale-105 transition-transform">
               1
             </div>
-            <span className="font-bold text-xs uppercase tracking-wider text-primary-700">Fill Form</span>
-            <span className="text-[10px] font-medium text-slate-400">फॉर्म भरें</span>
+            <span className="font-bold text-xs uppercase tracking-wider text-primary-700">
+              Fill Form
+            </span>
+            <span className="text-[10px] font-medium text-slate-400">
+              फॉर्म भरें
+            </span>
           </div>
           <div className="w-12 sm:w-16 h-1.5 bg-slate-200 rounded-full relative overflow-hidden">
-             <div className="absolute inset-y-0 left-0 bg-primary-500 w-1/3 animate-pulse"></div>
+            <div className="absolute inset-y-0 left-0 bg-primary-500 w-1/3 animate-pulse"></div>
           </div>
           <div className="flex flex-col items-center opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-not-allowed">
             <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center text-xl font-black mb-3 shadow-sm text-shadow-none">
               2
             </div>
-            <span className="font-bold text-xs uppercase tracking-wider text-slate-500">Verify</span>
-            <span className="text-[10px] font-medium text-slate-400">सत्यापन</span>
+            <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
+              Verify
+            </span>
+            <span className="text-[10px] font-medium text-slate-400">
+              सत्यापन
+            </span>
           </div>
           <div className="w-12 sm:w-16 h-1.5 bg-slate-200 rounded-full"></div>
           <div className="flex flex-col items-center opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-not-allowed">
             <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center text-xl font-black mb-3 shadow-sm text-shadow-none">
               3
             </div>
-            <span className="font-bold text-xs uppercase tracking-wider text-slate-500">Done</span>
-            <span className="text-[10px] font-medium text-slate-400">हो गया</span>
+            <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
+              Done
+            </span>
+            <span className="text-[10px] font-medium text-slate-400">
+              हो गया
+            </span>
           </div>
         </div>
       </div>
@@ -259,7 +327,7 @@ export default function RegisterProperty() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10"></div>
           <h2 className="text-xl font-extrabold text-slate-900 mb-6 flex items-start gap-4 border-b border-slate-100 pb-4">
             <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
-               <FileText size={20} />
+              <FileText size={20} />
             </div>
             <div>
               <div className="tracking-tight">Property Identity</div>
@@ -272,7 +340,10 @@ export default function RegisterProperty() {
           <div className="space-y-6">
             <div>
               <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
-                Survey Number * <span className="text-slate-400 font-medium text-xs ml-2 normal-case tracking-normal border-l border-slate-200 pl-2">सर्वे नंबर *</span>
+                Survey Number *{" "}
+                <span className="text-slate-400 font-medium text-xs ml-2 normal-case tracking-normal border-l border-slate-200 pl-2">
+                  सर्वे नंबर *
+                </span>
               </label>
               <input
                 type="text"
@@ -285,18 +356,27 @@ export default function RegisterProperty() {
               />
               <p className="text-xs font-medium text-slate-500 mt-2 flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg inline-flex">
                 <ShieldCheck size={14} className="text-blue-500" />
-                <span>Unique alphanumeric identifier from municipal land records.</span>
+                <span>
+                  Unique alphanumeric identifier from municipal land records.
+                </span>
               </p>
             </div>
 
             <div>
-              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">Property Category</label>
+              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                Property Category
+              </label>
               <select
                 name="propertyType"
                 className="input py-3 text-base font-medium text-slate-700 bg-white/50 cursor-pointer appearance-none"
                 value={formData.propertyType}
                 onChange={handleChange}
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                  backgroundPosition: `right 1rem center`,
+                  backgroundRepeat: `no-repeat`,
+                  backgroundSize: `1.5em 1.5em`,
+                }}
               >
                 {PROPERTY_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -312,14 +392,16 @@ export default function RegisterProperty() {
         <div className="glass-panel p-8">
           <h2 className="text-xl font-extrabold text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
-               <MapPin size={20} className="stroke-[2.5]" />
+              <MapPin size={20} className="stroke-[2.5]" />
             </div>
             Geographic Location
           </h2>
 
           <div className="space-y-6">
             <div>
-              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">Primary Address *</label>
+              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                Primary Address *
+              </label>
               <input
                 type="text"
                 name="location"
@@ -333,7 +415,9 @@ export default function RegisterProperty() {
 
             <div className="grid sm:grid-cols-2 gap-6">
               <div>
-                <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">City</label>
+                <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                  City
+                </label>
                 <input
                   type="text"
                   name="city"
@@ -344,13 +428,20 @@ export default function RegisterProperty() {
                 />
               </div>
               <div>
-                <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">State</label>
+                <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                  State
+                </label>
                 <select
                   name="state"
                   className="input py-3 bg-white/50 font-medium cursor-pointer appearance-none"
                   value={formData.state}
                   onChange={handleChange}
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                    backgroundPosition: `right 1rem center`,
+                    backgroundRepeat: `no-repeat`,
+                    backgroundSize: `1.5em 1.5em`,
+                  }}
                 >
                   <option value="">Select State</option>
                   {INDIAN_STATES.map((state) => (
@@ -369,14 +460,19 @@ export default function RegisterProperty() {
           <div className="absolute top-0 right-0 w-48 h-48 bg-purple-50 rounded-bl-full -z-10"></div>
           <h2 className="text-xl font-extrabold text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
-               <Maximize size={20} className="stroke-[2.5]" />
+              <Maximize size={20} className="stroke-[2.5]" />
             </div>
             Property Metrics
           </h2>
 
           <div className="grid sm:grid-cols-2 gap-6">
             <div>
-              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">Area (Sq Ft) * <span className="text-[10px] font-medium text-slate-400 normal-case ml-1 tracking-normal">क्षेत्रफल (वर्ग फुट) *</span></label>
+              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                Area (Sq Ft) *{" "}
+                <span className="text-[10px] font-medium text-slate-400 normal-case ml-1 tracking-normal">
+                  क्षेत्रफल (वर्ग फुट) *
+                </span>
+              </label>
               <div className="relative">
                 <input
                   type="number"
@@ -388,23 +484,34 @@ export default function RegisterProperty() {
                   min="1"
                   required
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Sq Ft</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                  Sq Ft
+                </span>
               </div>
             </div>
             <div>
-              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">Market Value (INR) * <span className="text-[10px] font-medium text-slate-400 normal-case ml-1 tracking-normal">बाजार मूल्य (₹) *</span></label>
+              <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+                Market Value (INR) *{" "}
+                <span className="text-[10px] font-medium text-slate-400 normal-case ml-1 tracking-normal">
+                  बाजार मूल्य (₹) *
+                </span>
+              </label>
               <div className="relative">
-                 <input
-                   type="text"
-                   name="marketValue"
-                   placeholder="e.g., 1500000"
-                   className="input py-3 bg-white/50 pl-8 pr-16 font-mono text-lg text-emerald-700 font-bold border-emerald-200 focus:border-emerald-500 focus:ring-emerald-200"
-                   value={formData.marketValue}
-                   onChange={handleChange}
-                   required
-                 />
-                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-emerald-600 text-lg">₹</span>
-                 <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">INR</span>
+                <input
+                  type="text"
+                  name="marketValue"
+                  placeholder="e.g., 1500000"
+                  className="input py-3 bg-white/50 pl-8 pr-16 font-mono text-lg text-emerald-700 font-bold border-emerald-200 focus:border-emerald-500 focus:ring-emerald-200"
+                  value={formData.marketValue}
+                  onChange={handleChange}
+                  required
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-emerald-600 text-lg">
+                  ₹
+                </span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-sm">
+                  INR
+                </span>
               </div>
             </div>
           </div>
@@ -414,26 +521,67 @@ export default function RegisterProperty() {
         <div className="glass-panel p-8 border border-white/60 bg-slate-50/50">
           <h2 className="text-xl font-extrabold text-slate-900 mb-6 flex items-center gap-3 border-b border-slate-200 pb-4">
             <div className="w-10 h-10 bg-slate-200 text-slate-600 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
-               <Upload size={20} />
+              <Upload size={20} />
             </div>
-            Digital Artifacts <span className="text-xs font-bold uppercase tracking-wide text-slate-400 bg-white px-2 py-1 rounded-md shadow-sm ml-2">Optional</span>
+            Digital Artifacts{" "}
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-400 bg-white px-2 py-1 rounded-md shadow-sm ml-2">
+              Optional
+            </span>
           </h2>
 
           <div>
-            <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">IPFS Document Hash</label>
-            <div className="relative">
+            <label className="label text-sm font-bold uppercase tracking-wider text-slate-700">
+              Digital Property Title / Deed
+            </label>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
               <input
                 type="text"
                 name="ipfsHash"
-                placeholder="Qm..."
-                className="input py-3 bg-white border-dashed border-2 hover:border-slate-400 transition-colors pl-4 font-mono text-sm"
+                placeholder="IPFS Hash (e.g., Qm...)"
+                className="input py-3 flex-1 bg-white border-dashed border-2 hover:border-slate-400 transition-colors pl-4 font-mono text-sm"
                 value={formData.ipfsHash}
                 onChange={handleChange}
               />
+              <span className="text-slate-400 font-bold hidden sm:inline">
+                OR
+              </span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-full sm:w-auto px-5 py-3 bg-white border-2 border-slate-200 hover:border-primary-400 hover:text-primary-600 rounded-xl font-bold text-slate-600 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2
+                      size={18}
+                      className="animate-spin text-primary-500"
+                    />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={18} />
+                    Upload Document
+                  </>
+                )}
+              </button>
             </div>
-            <p className="text-sm font-medium text-slate-500 mt-2 flex items-start gap-2 max-w-lg">
-               <ShieldCheck size={16} className="text-slate-400 mt-0.5 shrink-0" />
-               Upload supporting property deeds to the InterPlanetary File System (IPFS) and embed the cryptographic hash reference here.
+            <p className="text-xs font-medium text-slate-500 mt-3 flex items-start gap-2 max-w-lg">
+              <ShieldCheck
+                size={16}
+                className="text-slate-400 mt-0.5 shrink-0"
+              />
+              Upload supporting property deeds securely to our distributed
+              storage (IPFS). The resulting cryptographic hash will
+              automatically populate the field above.
             </p>
           </div>
         </div>
@@ -441,14 +589,15 @@ export default function RegisterProperty() {
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 border-l-4 border-l-red-500 rounded-xl p-5 shadow-sm">
-             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                 <span className="text-red-500 font-bold text-lg">!</span>
-               </div>
-               <p className="text-red-700 font-medium">
-                 {error.message || "An error occurred during submission. Please verify your data and try again."}
-               </p>
-             </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <span className="text-red-500 font-bold text-lg">!</span>
+              </div>
+              <p className="text-red-700 font-medium">
+                {error.message ||
+                  "An error occurred during submission. Please verify your data and try again."}
+              </p>
+            </div>
           </div>
         )}
 
@@ -461,7 +610,7 @@ export default function RegisterProperty() {
             </span>
             Submitting this asset is entirely free on our consortium network.
           </p>
-          
+
           <button
             type="submit"
             disabled={isLoading}
@@ -491,7 +640,10 @@ export default function RegisterProperty() {
             ) : (
               <span className="flex items-center justify-center gap-2 relative z-10">
                 Register Property Identity
-                <ArrowRight size={22} className="group-hover:translate-x-1 group-hover:scale-110 transition-transform" />
+                <ArrowRight
+                  size={22}
+                  className="group-hover:translate-x-1 group-hover:scale-110 transition-transform"
+                />
               </span>
             )}
           </button>

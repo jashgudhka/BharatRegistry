@@ -9,25 +9,33 @@ const MONGO_URI =
 
 const dummyUsers = [
   {
-    email: "user@test.com",
-    role: "user",
-    walletAddress: "0x1111111111111111111111111111111111111111",
-    username: "testuser",
-    fullName: "Test User",
+    email: "admin@test.com",
+    role: "admin",
+    walletAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Hardhat #0
+    username: "deployeradmin",
+    fullName: "Admin Deployer",
     isVerified: true,
   },
   {
-    email: "admin@test.com",
-    role: "admin",
-    walletAddress: "0x2222222222222222222222222222222222222222",
-    username: "testadmin",
-    fullName: "Test Admin",
+    email: "user@test.com",
+    role: "user",
+    walletAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", // Hardhat #1
+    username: "testuser",
+    fullName: "Test User One",
+    isVerified: true,
+  },
+  {
+    email: "user2@test.com",
+    role: "user",
+    walletAddress: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", // Hardhat #2
+    username: "testuser2",
+    fullName: "Test User Two",
     isVerified: true,
   },
   {
     email: "verifier@test.com",
     role: "verifier",
-    walletAddress: "0x3333333333333333333333333333333333333333",
+    walletAddress: "0x90F79bf6EB2c4f870365E785982E1f101E93b906", // Hardhat #3
     username: "testverifier",
     fullName: "Test Verifier",
     isVerified: true,
@@ -35,7 +43,7 @@ const dummyUsers = [
   {
     email: "registrar@test.com",
     role: "registrar",
-    walletAddress: "0x4444444444444444444444444444444444444444",
+    walletAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", // Hardhat #4
     username: "testregistrar",
     fullName: "Test Registrar",
     isVerified: true,
@@ -43,7 +51,7 @@ const dummyUsers = [
   {
     email: "bank@test.com",
     role: "bank",
-    walletAddress: "0x5555555555555555555555555555555555555555",
+    walletAddress: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", // Hardhat #5
     username: "testbank",
     fullName: "Test Bank",
     isVerified: true,
@@ -51,7 +59,7 @@ const dummyUsers = [
   {
     email: "superadmin@test.com",
     role: "super_admin",
-    walletAddress: "0x6666666666666666666666666666666666666666",
+    walletAddress: "0x976EA74026E726554dB657fA54763abd0C3a0aa9", // Hardhat #6
     username: "testsuper",
     fullName: "Test Super Admin",
     isVerified: true,
