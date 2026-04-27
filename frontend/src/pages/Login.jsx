@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function Login() {
   const { login, isLoading, error: authError } = useAuth();
@@ -38,7 +45,25 @@ export default function Login() {
 
     const result = await login(formData.email, formData.password);
     if (result.success) {
-      const from = location.state?.from?.pathname || "/dashboard";
+      // Determine default route based on role
+      let defaultRoute = "/dashboard";
+      const u = result.user || JSON.parse(localStorage.getItem("bharat_user"));
+
+      if (u) {
+        if (
+          u.role === "admin" ||
+          u.role === "verifier" ||
+          u.role === "registrar"
+        ) {
+          defaultRoute = "/admin";
+        } else if (u.role === "bank") {
+          defaultRoute = "/bank";
+        } else if (u.role === "super_admin") {
+          defaultRoute = "/super-admin";
+        }
+      }
+
+      const from = location.state?.from?.pathname || defaultRoute;
       navigate(from, { replace: true });
     }
   };
@@ -55,15 +80,19 @@ export default function Login() {
 
         <div className="card shadow-2xl p-8 bg-white/80 backdrop-blur-xl border border-white/40">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back</h1>
-            <p className="text-slate-500">Log in to your BharatRegistry account</p>
+            <h1 className="text-3xl font-extrabold text-slate-800 mb-2">
+              Welcome Back
+            </h1>
+            <p className="text-slate-500">
+              Log in to your BharatRegistry account
+            </p>
           </div>
 
           {authError && (
-             <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 mb-6 shadow-sm">
-                <AlertCircle className="text-rose-500 flex-shrink-0" size={20} />
-                <p className="text-rose-700 text-sm font-medium">{authError}</p>
-             </div>
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 mb-6 shadow-sm">
+              <AlertCircle className="text-rose-500 flex-shrink-0" size={20} />
+              <p className="text-rose-700 text-sm font-medium">{authError}</p>
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -82,7 +111,9 @@ export default function Login() {
                 />
               </div>
               {errors.email && (
-                <p className="text-rose-500 text-xs mt-1 font-medium">{errors.email}</p>
+                <p className="text-rose-500 text-xs mt-1 font-medium">
+                  {errors.email}
+                </p>
               )}
             </div>
 
@@ -101,7 +132,9 @@ export default function Login() {
                 />
               </div>
               {errors.password && (
-                <p className="text-rose-500 text-xs mt-1 font-medium">{errors.password}</p>
+                <p className="text-rose-500 text-xs mt-1 font-medium">
+                  {errors.password}
+                </p>
               )}
             </div>
 
@@ -112,7 +145,8 @@ export default function Login() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 size={20} className="animate-spin mr-2" /> Authenticating...
+                  <Loader2 size={20} className="animate-spin mr-2" />{" "}
+                  Authenticating...
                 </>
               ) : (
                 <>
@@ -124,7 +158,10 @@ export default function Login() {
 
           <div className="mt-8 text-center text-sm text-slate-500 border-t border-slate-100 pt-6">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary-600 font-bold hover:underline">
+            <Link
+              to="/register"
+              className="text-primary-600 font-bold hover:underline"
+            >
               Register now
             </Link>
           </div>

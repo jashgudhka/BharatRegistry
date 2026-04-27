@@ -168,22 +168,13 @@ export default function Layout({ children }) {
 
             {/* Right Side */}
             <div className="flex items-center gap-3">
-              {isConnected && !isAuthenticated && !isRegistered && (
+              {!isAuthenticated && (
                 <Link
                   to="/register"
-                  className="btn btn-primary text-sm py-2 px-4 hidden md:flex"
+                  className="btn btn-outline text-sm py-2 px-4 hidden md:flex border-slate-200"
                 >
                   <UserPlus size={16} /> Register
                 </Link>
-              )}
-              {isConnected && !isAuthenticated && isRegistered && (
-                <button
-                  onClick={() => navigate("/login")}
-                  disabled={isLoading}
-                  className="btn btn-primary text-sm py-2 px-4 hidden md:flex disabled:opacity-50"
-                >
-                  <LogIn size={16} /> {isLoading ? "Loading..." : "Login"}
-                </button>
               )}
 
               {isAuthenticated && (
@@ -192,7 +183,7 @@ export default function Layout({ children }) {
                   <span className="text-xs font-bold text-emerald-700">
                     {user?.username || user?.fullName?.split(" ")[0] || "User"}
                   </span>
-                  {user?.role !== "user" && (
+                  {user?.role && user?.role !== "user" && (
                     <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
                       {user?.role}
                     </span>
@@ -209,6 +200,14 @@ export default function Layout({ children }) {
                 >
                   <LogOut size={16} /> Logout
                 </button>
+              )}
+              {!isAuthenticated && (
+                <Link
+                  to="/login"
+                  className="btn btn-primary text-sm py-2 px-4 hidden md:flex"
+                >
+                  <LogIn size={16} /> Login
+                </Link>
               )}
 
               <WalletConnect />
@@ -300,31 +299,27 @@ export default function Layout({ children }) {
                   ))}
               </div>
             )}
-            {isConnected && !isAuthenticated && !isRegistered && (
-              <div className="pt-2 mt-2 border-t border-slate-200/50">
-                <Link
-                  to="/register"
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <UserPlus size={20} className="stroke-[2.5]" />
-                  Register Account
-                </Link>
-              </div>
-            )}
-            {isConnected && !isAuthenticated && isRegistered && (
-              <div className="pt-2 mt-2 border-t border-slate-200/50">
+            {!isAuthenticated && (
+              <div className="pt-2 mt-2 border-t border-slate-200/50 flex flex-col gap-2">
                 <button
                   onClick={() => {
                     navigate("/login");
                     setMobileMenuOpen(false);
                   }}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors disabled:opacity-50 text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 font-semibold transition-colors text-left"
                 >
                   <LogIn size={20} className="stroke-[2.5]" />
                   {isLoading ? "Loading..." : "Login"}
                 </button>
+                <Link
+                  to="/register"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 font-semibold transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <UserPlus size={20} className="stroke-[2.5]" />
+                  Register Account
+                </Link>
               </div>
             )}
             {isAuthenticated && (
