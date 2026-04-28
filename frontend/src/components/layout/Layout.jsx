@@ -16,6 +16,7 @@ import {
   UserPlus,
   LogIn,
   LogOut,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { useAccount } from "wagmi";
@@ -43,7 +44,10 @@ export default function Layout({ children }) {
   const isActive = (href) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
 
-  const publicNav = [{ name: "Home", href: "/", icon: Home, exact: true }];
+  const publicNav = [
+    { name: "Home", href: "/", icon: Home, exact: true },
+    { name: "Chain Explorer", href: "/explorer", icon: Activity },
+  ];
 
   const userNav = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

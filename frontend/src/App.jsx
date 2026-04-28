@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import DocumentVerify from "./pages/DocumentVerify";
 import EcosystemWorkbench from "./pages/EcosystemWorkbench";
+import BlockchainExplorer from "./pages/BlockchainExplorer";
 import NotFound from "./pages/NotFound";
 import AuthRoute from "./components/layout/AuthRoute";
 import Kyc from "./pages/Kyc";
@@ -66,6 +67,8 @@ function App() {
             </AuthRoute>
           }
         />
+
+        <Route path="/explorer" element={<BlockchainExplorer />} />
 
         <Route
           path="/kyc"
