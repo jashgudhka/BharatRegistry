@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { usePublicClient, useBlockNumber } from "wagmi";
+import { usePublicClient, useBlockNumber, useAccount } from "wagmi";
 import { 
   Database, 
   Activity, 
@@ -22,10 +22,12 @@ import {
   ListFilter,
   Eye,
   ShieldCheck,
-  Lock
+  Lock,
+  Filter
 } from "lucide-react";
 import { formatUnits, decodeFunctionData, decodeEventLog } from "viem";
 import toast from "react-hot-toast";
+import { useAuth } from "../hooks/useAuth";
 import {
   DOCUMENT_REGISTRY_ADDRESS,
   IDENTITY_REGISTRY_ADDRESS,
@@ -53,7 +55,6 @@ const ADDRESS_MAP = {
   [PROPERTY_TOKEN_ADDRESS?.toLowerCase()]: { name: "Tokenization Module", icon: PieChart, color: "text-pink-600", bg: "bg-pink-50", abi: PROPERTY_TOKEN_ABI },
 };
 
-// Combine all ABIs for event decoding
 const ALL_ABIS = [
   ...LAND_REGISTRY_ABI,
   ...DOCUMENT_REGISTRY_ABI,
@@ -64,7 +65,7 @@ const ALL_ABIS = [
   ...PROPERTY_TOKEN_ABI
 ];
 
-function TransactionRow({ txHash }) {
+function TransactionRow({ txHash, userAddress, isAdminMode }) {
   const publicClient = usePublicClient();
   const [tx, setTx] = useState(null);
   const [receipt, setReceipt] = useState(null);
@@ -92,7 +93,7 @@ function TransactionRow({ txHash }) {
           } catch (e) { /* ignore */ }
         }
 
-        // Decode Events/Logs
+        // Decode Events
         if (r.logs && r.logs.length > 0) {
           const decodedLogs = r.logs.map(log => {
             try {
@@ -113,6 +114,12 @@ function TransactionRow({ txHash }) {
   }, [txHash, publicClient]);
 
   if (!tx) return <div className="h-10 animate-pulse bg-slate-50 rounded-lg"></div>;
+
+  // RBAC Filtering: If not admin, only show txs involving user
+  const isInvolved = tx.from.toLowerCase() === userAddress?.toLowerCase() || 
+                     tx.to?.toLowerCase() === userAddress?.toLowerCase();
+  
+  if (!isAdminMode && !isInvolved) return null;
 
   const target = ADDRESS_MAP[tx.to?.toLowerCase()];
   const Icon = target?.icon || ArrowRightLeft;
@@ -144,10 +151,10 @@ function TransactionRow({ txHash }) {
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {tx.value > 0n && (
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-              {formatUnits(tx.value, 18)} ETH
-            </span>
+          {!isAdminMode && (
+             <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+               <User size={10}/> Your Activity
+             </span>
           )}
           {expanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400 group-hover:text-indigo-500" />}
         </div>
@@ -155,7 +162,6 @@ function TransactionRow({ txHash }) {
 
       {expanded && (
         <div className="px-4 pb-4 pt-2 border-t border-slate-50 space-y-4 animate-fade-in">
-          {/* Signer/Target Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Signer Identity</p>
@@ -173,7 +179,6 @@ function TransactionRow({ txHash }) {
             </div>
           </div>
 
-          {/* Events/Logs Section */}
           {events.length > 0 && (
             <div>
               <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1">
@@ -186,13 +191,13 @@ function TransactionRow({ txHash }) {
                        <span className="text-[11px] font-black text-emerald-800 tracking-tight">
                          {ev.eventName}
                        </span>
-                       <span className="text-[9px] font-bold text-emerald-500 uppercase">State Change Confirmed</span>
+                       <span className="text-[9px] font-bold text-emerald-500 uppercase">Confirmed</span>
                     </div>
                     <div className="grid grid-cols-1 gap-1">
                       {Object.entries(ev.args || {}).map(([key, val]) => (
                         <div key={key} className="flex justify-between items-center text-[10px] border-b border-emerald-100/50 py-1 last:border-0">
                           <span className="text-slate-500 font-medium">{key}</span>
-                          <span className="text-slate-700 font-bold truncate max-w-[200px]">
+                          <span className="text-slate-700 font-bold truncate">
                             {typeof val === 'bigint' ? val.toString() : String(val)}
                           </span>
                         </div>
@@ -204,44 +209,29 @@ function TransactionRow({ txHash }) {
             </div>
           )}
 
-          {/* Raw Params Section */}
-          {decoded && decoded.args && (
-            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Input Logic (Raw Params)</p>
-              <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto shadow-inner border border-slate-800">
-                <pre className="text-[10px] text-emerald-400 font-mono">
-                  {JSON.stringify(decoded.args, (key, value) => 
-                    typeof value === 'bigint' ? value.toString() : value, 
-                  2)}
-                </pre>
-              </div>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-4 pt-2">
-            <div className="flex-1 flex gap-4">
-               <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase">Gas Consumed</p>
-                  <p className="text-[10px] font-bold text-slate-700 flex items-center gap-1 mt-0.5">
-                    <Zap size={10} className="text-amber-500" /> {receipt?.gasUsed.toString()}
-                  </p>
-               </div>
-               <div>
-                  <p className="text-[9px] font-black text-slate-400 uppercase">Finality</p>
-                  <p className={`text-[10px] font-bold mt-0.5 ${receipt?.status === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {receipt?.status?.toUpperCase()}
-                  </p>
-               </div>
-            </div>
-            <button 
+          <div className="flex items-center justify-between pt-2">
+             <div className="flex gap-4">
+                <div>
+                   <p className="text-[9px] font-black text-slate-400 uppercase">Gas</p>
+                   <p className="text-[10px] font-bold text-slate-700 flex items-center gap-1 mt-0.5">
+                     <Zap size={10} className="text-amber-500" /> {receipt?.gasUsed.toString()}
+                   </p>
+                </div>
+                <div>
+                   <p className="text-[9px] font-black text-slate-400 uppercase">Status</p>
+                   <p className={`text-[10px] font-bold mt-0.5 ${receipt?.status === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>
+                     {receipt?.status?.toUpperCase()}
+                   </p>
+                </div>
+             </div>
+             <button 
                 className="btn btn-secondary py-1.5 px-3 text-[10px] h-auto rounded-lg"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   navigator.clipboard.writeText(tx.hash);
-                  toast.success("Hash copied!");
+                  toast.success("Copied!");
                 }}
               >
-                Copy Transaction ID
+                Copy ID
             </button>
           </div>
         </div>
@@ -252,17 +242,18 @@ function TransactionRow({ txHash }) {
 
 export default function BlockchainExplorer() {
   const publicClient = usePublicClient();
+  const { address: walletAddress } = useAccount();
+  const { isAdmin, isVerifier, isRegistrar, isSuperAdmin, isBank } = useAuth();
   const { data: blockNumber } = useBlockNumber({ watch: true });
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [networkInfo, setNetworkInfo] = useState(null);
+
+  // Authority check for global visibility
+  const isAdminMode = isAdmin || isVerifier || isRegistrar || isSuperAdmin || isBank;
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
-        const chainId = await publicClient.getChainId();
-        setNetworkInfo({ chainId });
-
         if (blockNumber) {
           const blockPromises = [];
           for (let i = 0; i < 8; i++) {
@@ -279,172 +270,145 @@ export default function BlockchainExplorer() {
         setLoading(false);
       }
     }
-
     fetchInitialData();
   }, [publicClient, blockNumber]);
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
-      {/* Hero Header */}
-      <section className="glass-panel p-8 md:p-12 relative overflow-hidden bg-gradient-to-br from-white/80 to-slate-50/80">
-        <div className="absolute -top-24 -right-16 h-80 w-80 rounded-full bg-gradient-to-br from-indigo-200/40 to-purple-200/30 blur-3xl" />
+      <section className="glass-panel p-8 md:p-12 relative overflow-hidden">
         <div className="relative">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-200">
-              <Database size={28} />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
-              Chain <span className="text-indigo-600">Explorer</span>
-            </h1>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+             <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-600 rounded-2xl text-white">
+                  <Database size={28} />
+                </div>
+                <div>
+                   <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                     Chain <span className="text-indigo-600">Explorer</span>
+                   </h1>
+                   <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${isAdminMode ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {isAdminMode ? 'Authority Auditor View' : 'Personal Activity Audit'}
+                      </span>
+                   </div>
+                </div>
+             </div>
+             
+             <div className="flex gap-4">
+                <div className="bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center">
+                   <span className="text-[10px] font-black text-slate-400 uppercase">Height</span>
+                   <span className="text-xl font-black text-slate-900">#{blockNumber?.toString() || '...'}</span>
+                </div>
+                <div className="bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center">
+                   <span className="text-[10px] font-black text-slate-400 uppercase">Status</span>
+                   <span className="text-xl font-black text-emerald-600 flex items-center gap-1">
+                      <RefreshCw size={16} className="animate-spin-slow" />
+                   </span>
+                </div>
+             </div>
           </div>
-          <p className="text-slate-600 max-w-2xl text-lg font-medium leading-relaxed">
-            Public transparency is the core of blockchain. This portal allows auditors to verify every state change across the Bharat Consortium.
-          </p>
           
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <Box size={14} className="text-indigo-500" /> Block Height
-              </p>
-              <p className="text-2xl font-black text-slate-900 tabular-nums">
-                #{blockNumber?.toString() ?? "..."}
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <Cpu size={14} className="text-indigo-500" /> Consensus
-              </p>
-              <p className="text-2xl font-black text-slate-900">
-                IBFT 2.0
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <Zap size={14} className="text-amber-500" /> Gas Cost
-              </p>
-              <p className="text-2xl font-black text-amber-600">
-                ZERO
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <RefreshCw size={14} className="text-emerald-500 animate-spin-slow" /> Node
-              </p>
-              <p className="text-2xl font-black text-emerald-600">
-                SYNCED
-              </p>
-            </div>
-          </div>
+          <p className="text-slate-600 max-w-2xl mt-6 text-lg font-medium leading-relaxed">
+            {isAdminMode 
+              ? "Full visibility enabled. You are auditing all state transitions across the Bharat Consortium network." 
+              : "Privacy filtering active. You are viewing only the cryptographic proofs associated with your identity."}
+          </p>
         </div>
       </section>
 
+      {!isAdminMode && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-4">
+           <div className="p-2 bg-blue-600 rounded-lg text-white">
+              <Filter size={20} />
+           </div>
+           <div>
+              <p className="text-sm font-black text-blue-900">Privacy Filter Active</p>
+              <p className="text-xs text-blue-700 font-medium">Your view is filtered to show only blocks containing transactions from/to your wallet.</p>
+           </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-              <Activity size={20} className="text-indigo-600" /> Real-time Activity
-            </h2>
-          </div>
-
           <div className="space-y-4">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm">
                 <RefreshCw className="animate-spin text-indigo-400 mb-4" size={40} />
-                <p className="text-slate-500 font-black tracking-widest uppercase text-xs">Awaiting Network Packets...</p>
+                <p className="text-slate-500 font-black tracking-widest uppercase text-xs">Syncing Ledger...</p>
               </div>
             ) : (
-              blocks.map((block) => (
-                <div key={block.hash} className="card p-0 overflow-hidden group hover:border-indigo-200 transition-all shadow-sm border-slate-100">
-                  <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex items-start justify-between">
-                    <div className="flex gap-5">
-                      <div className="h-14 w-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm">
-                        <Box size={28} />
+              blocks.map((block) => {
+                // If not admin, we still show the block, but TransactionRow will handle visibility.
+                // However, we only want to show blocks that HAVE at least one visible transaction for the user.
+                // But for a true "Explorer" feel, showing every block is standard, even if empty.
+                return (
+                  <div key={block.hash} className="card p-0 overflow-hidden shadow-sm border-slate-100">
+                    <div className="p-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Box size={20} className="text-slate-400" />
+                        <span className="text-sm font-black text-slate-900">Block #{block.number.toString()}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{block.hash.slice(0, 16)}...</span>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-black text-slate-900 tracking-tight">Block #{block.number.toString()}</span>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${block.transactions.length > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
-                            {block.transactions.length} Events
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-1.5">
-                          <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                            <Clock size={14} className="text-slate-300" /> {new Date(Number(block.timestamp) * 1000).toLocaleTimeString()}
-                          </span>
-                          <span className="text-xs font-mono text-slate-400 flex items-center gap-1.5">
-                            <Hash size={14} className="text-slate-300" /> {block.hash.slice(0, 24)}...
-                          </span>
-                        </div>
-                      </div>
+                      <span className="text-xs font-bold text-slate-400">
+                        {new Date(Number(block.timestamp) * 1000).toLocaleTimeString()}
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-3 bg-white">
+                      {block.transactions.length === 0 ? (
+                        <p className="text-[11px] text-slate-400 italic">No transactions in this block.</p>
+                      ) : (
+                        block.transactions.map((txHash) => (
+                          <TransactionRow 
+                            key={txHash} 
+                            txHash={txHash} 
+                            userAddress={walletAddress} 
+                            isAdminMode={isAdminMode} 
+                          />
+                        ))
+                      )}
                     </div>
                   </div>
-
-                  <div className="p-6 space-y-4 bg-white">
-                    {block.transactions.length === 0 ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-400 font-bold italic py-2">
-                        <Eye className="opacity-50" size={14} /> Quiet block. No state transitions recorded.
-                      </div>
-                    ) : (
-                      block.transactions.map((txHash) => (
-                        <TransactionRow key={txHash} txHash={txHash} />
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Sidebar Info */}
         <div className="space-y-6">
-          <section className="card p-8 bg-indigo-900 border-0 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 text-indigo-400 opacity-20 group-hover:opacity-40 transition-opacity">
-              <Lock size={120} strokeWidth={1} />
-            </div>
+          <section className="card p-6 bg-indigo-900 border-0 shadow-xl relative overflow-hidden group">
             <div className="relative">
-              <h3 className="font-black text-white text-lg mb-6 flex items-center gap-2">
-                <ShieldCheck size={20} className="text-indigo-400" /> Auditor F.A.Q
+              <h3 className="font-black text-white text-base mb-6 flex items-center gap-2">
+                <ShieldCheck size={18} className="text-indigo-400" /> Audit Guidance
               </h3>
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div>
-                  <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1.5">Why is this public?</p>
-                  <p className="text-xs leading-relaxed text-indigo-100 font-medium">
-                    Blockchain is a transparent ledger. While personal details are encrypted, the <span className="text-white font-bold">validity</span> of every property deed must be publicly verifiable to prevent fraud.
-                  </p>
+                  <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-1">Your Identity</p>
+                  <p className="text-[10px] font-mono text-white truncate bg-white/10 p-2 rounded-lg">{walletAddress}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-1.5">What are "Events"?</p>
-                  <p className="text-xs leading-relaxed text-indigo-100 font-medium">
-                    Events are permanent logs emitted by Smart Contracts. They represent specific legal milestones like <span className="text-white font-bold">PropertyVerified</span> or <span className="text-white font-bold">LienAdded</span>.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest mb-1.5">Is it secure?</p>
-                  <p className="text-xs leading-relaxed text-indigo-100 font-medium">
-                    Yes. This is a <span className="text-white font-bold">Permissioned Network</span>. Only verified government nodes can update the ledger, though anyone can audit the history.
-                  </p>
+                <div className="text-[11px] leading-relaxed text-indigo-100">
+                  <p className="mb-2">Your activity is recorded as an immutable sequence of <span className="text-white font-bold">cryptographic proofs</span>.</p>
+                  <p>Expand any transaction to see the specific legal events that have been finalized on-chain.</p>
                 </div>
               </div>
             </div>
           </section>
 
           <section className="card p-6 border-slate-100 shadow-sm">
-            <h3 className="font-black text-slate-900 mb-5 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-               Consortium Modules
-            </h3>
-            <div className="space-y-3">
-              {Object.values(ADDRESS_MAP).map((m) => (
-                <div key={m.name} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-1.5 rounded-lg ${m.bg} ${m.color}`}>
-                       <m.icon size={12} />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-700">{m.name}</span>
-                  </div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                </div>
-              ))}
+            <h3 className="font-black text-slate-900 mb-4 uppercase tracking-widest text-[10px]">Network Integrity</h3>
+            <div className="space-y-2">
+               <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">Chain ID</span>
+                  <span className="font-bold">31337</span>
+               </div>
+               <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">Gas Token</span>
+                  <span className="font-bold text-emerald-600">BHARAT (Zero)</span>
+               </div>
+               <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-500">Security</span>
+                  <span className="font-bold text-indigo-600">IBFT-2.0</span>
+               </div>
             </div>
           </section>
         </div>

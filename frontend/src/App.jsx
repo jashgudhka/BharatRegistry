@@ -71,7 +71,7 @@ function App() {
         <Route
           path="/explorer"
           element={
-            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin", "bank"]}>
+            <AuthRoute allowedRoles={["user", "admin", "verifier", "registrar", "super_admin", "bank"]}>
               <BlockchainExplorer />
             </AuthRoute>
           }
