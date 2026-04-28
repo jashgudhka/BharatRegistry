@@ -969,22 +969,6 @@ export default function EcosystemWorkbench() {
             </span>
           </div>
         </section>
-                      args: [
-                        BigInt(disputeForm.disputeId || 0),
-                        Number(disputeForm.outcome || 1),
-                        disputeForm.keepBlocks,
-                        disputeForm.resolutionURI,
-                      ],
-                    }),
-                  "Dispute resolved",
-                  [refetchPropertyBlocked],
-                )
-              }
-            >
-              Resolve
-            </button>
-          </div>
-          <p className="text-sm font-semibold text-slate-600">
 
         <section className="card p-6 space-y-4">
           <div>
