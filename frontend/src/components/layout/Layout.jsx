@@ -104,7 +104,7 @@ export default function Layout({ children }) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-2 flex-1 justify-center px-4 overflow-hidden">
               {publicNav.map((item) => (
                 <Link
                   key={item.name}
@@ -171,7 +171,7 @@ export default function Layout({ children }) {
             </div>
 
             {/* Right Side */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 shrink-0 ml-auto">
               {!isAuthenticated && (
                 <Link
                   to="/register"
@@ -200,7 +200,7 @@ export default function Layout({ children }) {
                     logout();
                     navigate("/login");
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-md font-bold"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 hover:shadow-lg transition-all shadow-md font-bold shrink-0"
                 >
                   <LogOut size={16} /> Logout
                 </button>
