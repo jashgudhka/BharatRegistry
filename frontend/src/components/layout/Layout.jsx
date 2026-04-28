@@ -46,6 +46,9 @@ export default function Layout({ children }) {
 
   const publicNav = [
     { name: "Home", href: "/", icon: Home, exact: true },
+  ];
+
+  const explorerNav = [
     { name: "Chain Explorer", href: "/explorer", icon: Activity },
   ];
 
@@ -110,6 +113,17 @@ export default function Layout({ children }) {
                   key={item.name}
                   to={item.href}
                   className={navLinkClass(item.href, item.exact)}
+                >
+                  <item.icon size={16} className="stroke-[2.5]" />
+                  {item.name}
+                </Link>
+              ))}
+
+              {isAuthenticated && (isAdmin || isVerifier || isRegistrar || isSuperAdmin || isBank) && explorerNav.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={navLinkClass(item.href)}
                 >
                   <item.icon size={16} className="stroke-[2.5]" />
                   {item.name}
@@ -241,6 +255,17 @@ export default function Layout({ children }) {
         >
           <div className="glass-panel p-3 space-y-1 shadow-2xl">
             {publicNav.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-primary-50 hover:text-primary-600 font-semibold transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <item.icon size={20} className="stroke-[2.5]" />
+                {item.name}
+              </Link>
+            ))}
+            {isAuthenticated && (isAdmin || isVerifier || isRegistrar || isSuperAdmin || isBank) && explorerNav.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}

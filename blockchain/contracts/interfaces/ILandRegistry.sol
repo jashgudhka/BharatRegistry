@@ -58,4 +58,10 @@ interface ILandRegistry {
     function isPropertyVerified(uint256 _propertyId) external view returns (bool);
 
     function getTotalProperties() external view returns (uint256);
+    
+    function nominateHeir(uint256 _propertyId, address _nominee) external;
+    
+    function claimInheritance(uint256 _propertyId) external;
+    
+    function getNominatedHeir(uint256 _propertyId) external view returns (address);
 }

@@ -24,8 +24,13 @@ contract LandRegistry is ILandRegistry, AccessControl, ReentrancyGuard, Pausable
     mapping(address => uint256[]) private _ownerProperties;
     mapping(string => uint256) private _surveyToPropertyId;
     
+    mapping(uint256 => address) private _nominees;
+    
     uint256 private _propertyIdCounter;
     uint256 private _totalVerifiedProperties;
+
+    event NomineeUpdated(uint256 indexed propertyId, address indexed nominee);
+    event InheritanceClaimed(uint256 indexed propertyId, address indexed previousOwner, address indexed newOwner);
 
     // ============ Constructor ============
     constructor() {
@@ -210,6 +215,56 @@ contract LandRegistry is ILandRegistry, AccessControl, ReentrancyGuard, Pausable
         _properties[_propertyId].marketValue = _newMarketValue;
     }
 
+    /**
+     * @notice Nominate an heir for the property (owner only)
+     * @param _propertyId The ID of the property
+     * @param _nominee The address of the heir
+     */
+    function nominateHeir(uint256 _propertyId, address _nominee) 
+        external 
+        propertyExists(_propertyId) 
+        onlyPropertyOwner(_propertyId) 
+        whenNotPaused 
+    {
+        require(_nominee != address(0), "LandRegistry: Invalid nominee address");
+        require(_nominee != msg.sender, "LandRegistry: Cannot nominate self");
+        
+        _nominees[_propertyId] = _nominee;
+        emit NomineeUpdated(_propertyId, _nominee);
+    }
+
+    /**
+     * @notice Claim property ownership as a nominated heir (nominee only)
+     * @dev In a real system, this might require a Registrar's approval or a death certificate proof.
+     * For this demo, we allow the nominee to claim it directly to show the workflow.
+     * @param _propertyId The ID of the property to claim
+     */
+    function claimInheritance(uint256 _propertyId) 
+        external 
+        propertyExists(_propertyId) 
+        whenNotPaused 
+        nonReentrant
+    {
+        require(_nominees[_propertyId] == msg.sender, "LandRegistry: Not the nominated heir");
+        
+        address previousOwner = _properties[_propertyId].currentOwner;
+        
+        // Remove from previous owner
+        _removePropertyFromOwner(previousOwner, _propertyId);
+        
+        // Add to new owner (heir)
+        _ownerProperties[msg.sender].push(_propertyId);
+        
+        // Update property
+        _properties[_propertyId].currentOwner = msg.sender;
+        _properties[_propertyId].status = PropertyStatus.Transferred; // Needs re-verification
+        
+        // Clear nominee
+        delete _nominees[_propertyId];
+
+        emit InheritanceClaimed(_propertyId, previousOwner, msg.sender);
+    }
+
     // ============ View Functions ============
 
     /**
@@ -299,6 +354,15 @@ contract LandRegistry is ILandRegistry, AccessControl, ReentrancyGuard, Pausable
         returns (uint256) 
     {
         return _surveyToPropertyId[_surveyNumber];
+    }
+
+    /**
+     * @notice Get the nominated heir for a property
+     * @param _propertyId The property ID
+     * @return Nominee address (0 if none)
+     */
+    function getNominatedHeir(uint256 _propertyId) external view returns (address) {
+        return _nominees[_propertyId];
     }
 
     // ============ Admin Functions ============

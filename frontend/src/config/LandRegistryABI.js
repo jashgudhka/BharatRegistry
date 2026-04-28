@@ -248,4 +248,28 @@ export const LAND_REGISTRY_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_propertyId", type: "uint256" },
+      { internalType: "address", name: "_nominee", type: "address" },
+    ],
+    name: "nominateHeir",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "claimInheritance",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_propertyId", type: "uint256" }],
+    name: "getNominatedHeir",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ];

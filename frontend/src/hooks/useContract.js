@@ -137,3 +137,20 @@ export function useIsPropertyVerified(propertyId) {
 
   return { isVerified: data || false, isLoading, error }
 }
+
+/**
+ * Hook to get nominated heir
+ */
+export function useNominatedHeir(propertyId) {
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: LAND_REGISTRY_ADDRESS,
+    abi: LAND_REGISTRY_ABI,
+    functionName: 'getNominatedHeir',
+    args: [BigInt(propertyId || 0)],
+    enabled: !!propertyId,
+  })
+
+  const nominee = data && data !== '0x0000000000000000000000000000000000000000' ? data : null
+
+  return { nominee, isLoading, error, refetch }
+}

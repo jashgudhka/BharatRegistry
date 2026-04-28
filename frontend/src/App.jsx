@@ -68,7 +68,14 @@ function App() {
           }
         />
 
-        <Route path="/explorer" element={<BlockchainExplorer />} />
+        <Route
+          path="/explorer"
+          element={
+            <AuthRoute allowedRoles={["admin", "verifier", "registrar", "super_admin", "bank"]}>
+              <BlockchainExplorer />
+            </AuthRoute>
+          }
+        />
 
         <Route
           path="/kyc"

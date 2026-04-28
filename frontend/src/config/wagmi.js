@@ -5,7 +5,7 @@ import { injected } from "wagmi/connectors";
 
 // Define Bharat Private Network for zero-gas experience
 const bharatNetwork = {
-  id: 1337,
+  id: 31337,
   name: "Bharat Private Network",
   nativeCurrency: {
     decimals: 18,
